@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kertas yang Cerdas · Petualangan Bina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{--accent:#8C8FE0;--x:#1E2E5C;--o:#B4532A}
+  .board{display:grid;grid-template-columns:1fr 1fr;gap:18px;flex:1;min-height:0}
+  .play{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+  .ttt{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:min(100%,46vh,470px)}
+  .sq{aspect-ratio:1;border-radius:18px;border:3px solid var(--line);background:#fff;font-size:clamp(40px,7vh,84px);font-weight:800;display:grid;place-items:center;line-height:1}
+  .sq.x{color:var(--x)}.sq.o{color:var(--o)}
+  .sq.new{background:#FFF4D9}
+  .sq.win{background:#DDF2E0;border-color:#9BD3A0}
+  .turn{font-weight:700;color:var(--navy);min-height:1.4em;text-align:center}
+  .paper{background:#FFFDF5;border:2px solid #E6DDBF;border-radius:18px;padding:16px 18px;box-shadow:0 6px 0 #EFE7CC}
+  .paper h3{color:var(--navy);margin-bottom:8px}
+  .rules{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .rule{display:flex;align-items:center;gap:10px;border-radius:12px;padding:8px 10px;background:#fff;border:2px solid #EFE7CC}
+  .rule .no{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;display:grid;place-items:center}
+  .rule.fire{background:#FFF0C7;border-color:var(--gold)}
+  .rule.off{opacity:.4}
+  .rule .txt{flex:1;line-height:1.2}
+  .rule .ctl{display:flex;gap:6px}
+  .rule .ctl button{border:2px solid var(--line);background:#fff;border-radius:10px;min-width:44px;min-height:44px;font-weight:800}
+  .rule .ctl button.on{background:var(--leaf);color:#fff;border-color:var(--leaf)}
+  .log{margin-top:12px;font-size:.85em;color:var(--muted);max-height:24vh;overflow:auto}
+  .log div{padding:3px 0;border-bottom:1px dashed #E6DDBF}
+  .score{display:flex;gap:12px;margin:10px 0}
+  .score .metric{flex:1;text-align:center}
+  .minis{display:flex;gap:12px;flex-wrap:wrap}
+  .mini{display:grid;grid-template-columns:repeat(3,28px);gap:3px}
+  .mini span{width:28px;height:28px;border-radius:6px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;font-weight:800;font-size:18px}
+  @media (max-width:1000px){.board{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-game="g4">
+<div class="app">
+  <div class="topbar"></div>
+  <div class="main">
+    <section class="story" id="story"></section>
+    <section class="board" id="boardArea"></section>
+    <div class="actions" id="actions"></div>
+  </div>
+</div>
+<script src="common.js"></script>
+<script>
+const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+const RULE = {
+  win:'Kalau bisa menang, isi kotak itu.',
+  block:'Kalau lawan hampir menang, halangi.',
+  center:'Kalau kotak tengah kosong, ambil.',
+  corner:'Ambil sudut yang kosong.',
+  side:'Ambil sisi yang kosong.',
+  any:'Ambil kotak kosong mana saja.'
+};
+const LEVELS = [
+  { title:'Kertas pemula', story:'Selembar kertas berisi aturan bermain tic-tac-toe. Kertas tidak berpikir, ia hanya menjalankan aturan dari atas ke bawah. Kalahkan kertas ini! Kamu ✕ dan jalan duluan.', rules:['side','any'] },
+  { title:'Kertas yang lupa', story:'Kertas ini lebih pintar: ia mencoba menang dan suka tengah serta sudut. Tapi ada satu aturan penting yang ia lupakan. Temukan dan kalahkan!', rules:['win','center','corner','side','any'] },
+  { title:'Kertas juara', story:'Kertas ini punya aturan lengkap, termasuk menghalangi. Bisakah kamu menemukan celahnya? Seri juga lulus, tetapi menang memberi tiga bintang.', rules:['win','block','center','corner','side','any'] },
+  { title:'Tulis aturanmu sendiri', story:'Sekarang kamu yang menulis aturan kertas! Atur urutan dan nyalakan aturan yang penting. Kertasmu (✕) akan melawan Si Penantang (O) dalam 20 pertandingan. Targetnya: tidak pernah kalah.', builder:true },
+];
+let L = 1, lv, board, over, rulesNow, used, log, lastNew = -1;
+const $ = id => document.getElementById(id);
+const hdr = Bina.header({ game:'g4', icon:'📜', title:'Kertas yang Cerdas', count:4, current:() => L, onPick:start, onHelp:help });
+
+function help(){
+  Bina.info('Cara bermain', `<p>Tic-tac-toe: siapa yang lebih dulu membuat tiga tanda sejajar (mendatar, menurun, atau miring) menang.</p>
+  <p style="margin-top:10px">Lawanmu adalah <b>kertas berisi aturan</b>. Setiap giliran, kertas membaca aturannya dari nomor 1. Aturan pertama yang bisa dijalankan langsung dipakai. Aturan yang dipakai akan menyala kuning.</p>
+  <p style="margin-top:10px">Di level 4, kamu menulis aturan sendiri dan mengujinya dalam 20 pertandingan.</p>`);
+}
+// ---------- logika aturan ----------
+function winner(b){ for (const l of LINES) if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[1]] === b[l[2]]) return { p:b[l[0]], line:l }; return null; }
+function twoOf(b, p){ for (const l of LINES) { const v = l.map(i => b[i]); if (v.filter(x => x === p).length === 2 && v.includes(null)) return l[v.indexOf(null)]; } return -1; }
+function choose(b, me, op, rules){
+  for (const r of rules) {
+    if (r === 'win') { const m = twoOf(b, me); if (m >= 0) return [m, r]; }
+    if (r === 'block') { const m = twoOf(b, op); if (m >= 0) return [m, r]; }
+    if (r === 'center' && !b[4]) return [4, r];
+    if (r === 'corner') { const c = [0,2,6,8].find(i => !b[i]); if (c !== undefined) return [c, r]; }
+    if (r === 'side') { const c = [1,3,5,7].find(i => !b[i]); if (c !== undefined) return [c, r]; }
+    if (r === 'any') { const c = b.findIndex(x => !x); if (c >= 0) return [c, r]; }
+  }
+  return [b.findIndex(x => !x), 'any'];
+}
+// ---------- tampilan ----------
+function start(n){
+  L = n; lv = LEVELS[n-1];
+  $('story').innerHTML = `${Bina.bina}<div><h2>Level ${n}: ${lv.title}</h2><p>${lv.story}</p></div>`;
+  hdr.redraw();
+  if (lv.builder) return startBuilder();
+  rulesNow = lv.rules.slice(); board = Array(9).fill(null); over = false; used = {}; log = []; lastNew = -1;
+  $('boardArea').innerHTML = `<div class="panel play"><div class="turn" id="turn">Giliranmu: ketuk satu kotak.</div><div class="ttt" id="ttt"></div></div>
+    <div class="paper"><h3>📜 Kertas aturan</h3><ol class="rules" id="rules"></ol><div class="log" id="log"></div></div>`;
+  $('actions').innerHTML = `<button class="btn btn-soft" id="again"><span class="icon">↺</span> Main lagi</button>`;
+  $('again').onclick = () => start(L);
+  drawRules(); drawBoard();
+}
+function drawRules(fire){
+  $('rules').innerHTML = rulesNow.map((r,i) => `<li class="rule ${r === fire ? 'fire' : ''}"><span class="no">${i+1}</span><span class="txt">${RULE[r]}</span></li>`).join('');
+}
+function drawBoard(win){
+  const t = $('ttt'); t.innerHTML = '';
+  board.forEach((v,i) => {
+    const b = document.createElement('button'); b.className = 'sq' + (v ? ' ' + v : '') + (i === lastNew ? ' new' : '') + (win && win.line.includes(i) ? ' win' : '');
+    b.textContent = v === 'x' ? '✕' : v === 'o' ? 'O' : ''; b.setAttribute('aria-label', v ? (v === 'x' ? 'kotak milikmu' : 'kotak milik kertas') : `kotak kosong ${i+1}`);
+    b.disabled = !!v || over; b.onclick = () => play(i); t.appendChild(b);
+  });
+}
+function addLog(s){ log.push(s); $('log').innerHTML = log.map(x => `<div>${x}</div>`).join(''); $('log').scrollTop = 1e6; }
+function play(i){
+  if (over || board[i]) return;
+  board[i] = 'x'; lastNew = i; addLog(`Kamu mengisi kotak ${i+1}.`);
+  if (end()) return;
+  over = true; drawBoard(); $('turn').textContent = 'Kertas sedang membaca aturannya…';
+  setTimeout(() => {
+    const [m, r] = choose(board, 'o', 'x', rulesNow);
+    board[m] = 'o'; lastNew = m; used[r] = (used[r] || 0) + 1; over = false;
+    drawRules(r); addLog(`Kertas memakai aturan ${rulesNow.indexOf(r)+1}: ${RULE[r].toLowerCase().replace(/\.$/,'')} (kotak ${m+1}).`);
+    if (!end()) { $('turn').textContent = 'Giliranmu.'; drawBoard(); }
+  }, 700);
+}
+function end(){
+  const w = winner(board), full = board.every(Boolean);
+  if (!w && !full) { drawBoard(); return false; }
+  over = true; drawBoard(w);
+  const res = w ? (w.p === 'x' ? 'win' : 'lose') : 'draw';
+  $('turn').textContent = res === 'win' ? 'Kamu menang!' : res === 'lose' ? 'Kertas menang.' : 'Seri.';
+  setTimeout(() => reportGame(res), 700);
+  return true;
+}
+function reportGame(res){
+  const stars = res === 'win' ? 3 : res === 'draw' ? 1 : 0;
+  if (stars) Bina.save('g4', L, stars);
+  const what = [];
+  const usage = Object.entries(used).sort((a,b) => b[1]-a[1]).map(([r,n]) => `aturan “${RULE[r].toLowerCase().replace('.','')}” ${n}×`).join(', ');
+  if (usage) what.push(`Kertas memakai: ${usage}.`);
+  if (L === 1) what.push(res === 'win' ? 'Kertas ini hanya mengambil sisi. Ia tidak pernah mencoba menang atau menghalangimu, jadi mudah dikalahkan.' : 'Kertas ini hanya mengambil sisi. Coba buat tiga tanda sejajar sebelum sisi habis.');
+  if (L === 2) what.push(res === 'win' ? 'Benar! Kertas ini tidak punya aturan <b>menghalangi</b>. Ia membiarkanmu membuat tiga sejajar.' : 'Kertas ini tidak punya aturan menghalangi. Buat dua tanda sejajar, lalu lengkapi barisnya.');
+  if (L === 3) what.push(res === 'win' ? 'Kamu menemukan celah: <b>dua ancaman sekaligus</b> (garpu, <i>fork</i>). Aturan kertas hanya bisa menghalangi satu ancaman setiap giliran.' : res === 'draw' ? 'Aturan kertas cukup kuat untuk menahanmu. Petunjuk: ambil sudut, lalu sudut seberangnya, dan buat dua ancaman sekaligus.' : 'Kertas menang karena aturan nomor 1 (menang) dan 2 (menghalangi) ia jalankan dengan disiplin.');
+  what.push('Kertas tidak pernah lelah dan tidak pernah lupa urutan aturannya, tetapi ia juga tidak pernah belajar dari kekalahan.');
+  Bina.result({
+    stars, title: res === 'win' ? 'Kamu mengalahkan kertas!' : res === 'draw' ? 'Seri!' : 'Kertas menang kali ini',
+    subtitle: `Level ${L}: ${lv.title}`,
+    metrics: [[res === 'win' ? 'Menang' : res === 'draw' ? 'Seri' : 'Kalah', 'hasil'], [board.filter(Boolean).length, 'kotak terisi'], [rulesNow.length, 'aturan di kertas']],
+    what,
+    ai: 'Kertas ini adalah <b>sistem berbasis aturan</b> (<i>rule-based system</i>), salah satu bentuk AI paling awal. Ia tampak cerdas, padahal kecerdasannya berasal dari aturan yang ditulis manusia. Aturan yang kurang membuat celah.',
+    ct: ['Algoritma','Abstraksi','Evaluasi'],
+    onRetry: () => start(L), next: stars && L < 4 ? () => start(L+1) : null
+  });
+}
+// ---------- level 4: penyusun aturan ----------
+let order, active;
+function startBuilder(){
+  order = ['side','corner','center','block','win']; active = { side:true, corner:true, center:true, block:true, win:true };
+  $('boardArea').innerHTML = `<div class="paper"><h3>📜 Aturan kertasmu</h3><p class="hint" style="margin-bottom:8px">Kertas membaca dari atas. Pindahkan dengan ▲▼, nyalakan atau matikan dengan tombol ✓.</p><ol class="rules" id="rules"></ol></div>
+    <div class="panel"><h3>🏟 Hasil pertandingan</h3><div id="arena"><p class="hint">Tekan <b>Uji 20 pertandingan</b>. Kertasmu (✕) selalu jalan duluan. Si Penantang (O) akan menang bila bisa, selain itu ia memilih kotak secara acak.</p></div></div>`;
+  $('actions').innerHTML = `<button class="btn btn-main" id="test"><span class="icon">▶</span> Uji 20 pertandingan</button>`;
+  $('test').onclick = tournament;
+  drawBuilder();
+}
+function drawBuilder(){
+  $('rules').innerHTML = '';
+  order.forEach((r,i) => {
+    const li = document.createElement('li'); li.className = 'rule' + (active[r] ? '' : ' off');
+    li.innerHTML = `<span class="no">${i+1}</span><span class="txt">${RULE[r]}</span><span class="ctl"></span>`;
+    const ctl = li.querySelector('.ctl');
+    const up = document.createElement('button'); up.textContent = '▲'; up.disabled = i === 0; up.setAttribute('aria-label','Naikkan');
+    up.onclick = () => { [order[i-1], order[i]] = [order[i], order[i-1]]; drawBuilder(); };
+    const dn = document.createElement('button'); dn.textContent = '▼'; dn.disabled = i === order.length-1; dn.setAttribute('aria-label','Turunkan');
+    dn.onclick = () => { [order[i+1], order[i]] = [order[i], order[i+1]]; drawBuilder(); };
+    const tg = document.createElement('button'); tg.textContent = '✓'; tg.className = active[r] ? 'on' : ''; tg.setAttribute('aria-pressed', active[r]); tg.setAttribute('aria-label','Nyalakan atau matikan');
+    tg.onclick = () => { active[r] = !active[r]; drawBuilder(); };
+    ctl.append(up, dn, tg); $('rules').appendChild(li);
+  });
+  const li = document.createElement('li'); li.className = 'rule'; li.innerHTML = `<span class="no">${order.length+1}</span><span class="txt">${RULE.any} <small class="hint">(selalu ada di akhir)</small></span>`;
+  $('rules').appendChild(li);
+}
+function rng(seed){ return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+function tournament(){
+  const rules = order.filter(r => active[r]).concat('any');
+  const rand = rng(20261010);
+  let W = 0, D = 0, Lo = 0; const losses = []; const fired = {};
+  for (let g = 0; g < 20; g++) {
+    const b = Array(9).fill(null); let turn = 'x', w = null;
+    while (!(w = winner(b)) && b.some(v => !v)) {
+      if (turn === 'x') { const [m, r] = choose(b, 'x', 'o', rules); b[m] = 'x'; fired[r] = (fired[r] || 0) + 1; }
+      else { let m = twoOf(b, 'o'); if (m < 0) { const e = b.map((v,i) => v ? -1 : i).filter(i => i >= 0); m = e[Math.floor(rand() * e.length)]; } b[m] = 'o'; }
+      turn = turn === 'x' ? 'o' : 'x';
+    }
+    if (w && w.p === 'x') W++; else if (w) { Lo++; losses.push(b.slice()); } else D++;
+  }
+  const mini = b => `<div class="mini">${b.map(v => `<span style="color:${v==='x'?'var(--x)':'var(--o)'}">${v==='x'?'✕':v==='o'?'O':''}</span>`).join('')}</div>`;
+  $('arena').innerHTML = `<div class="score"><div class="metric"><b>${W}</b><span>menang</span></div><div class="metric"><b>${D}</b><span>seri</span></div><div class="metric"><b>${Lo}</b><span>kalah</span></div></div>
+    ${losses.length ? `<p class="hint" style="margin-bottom:6px">Contoh papan saat kertasmu kalah:</p><div class="minis">${losses.slice(0,4).map(mini).join('')}</div>` : '<p class="hint">Kertasmu tidak pernah kalah. Hebat!</p>'}`;
+  const stars = Lo === 0 ? 3 : Lo <= 3 ? 2 : Lo <= 6 ? 1 : 0;
+  if (stars) Bina.save('g4', 4, stars);
+  const what = [];
+  what.push(`Urutan aturanmu: ${rules.map((r,i) => `${i+1}) ${RULE[r].toLowerCase().replace('.','')}`).join('; ')}.`);
+  const iw = rules.indexOf('win'), ib = rules.indexOf('block');
+  if (iw < 0) what.push('Aturan <b>menang</b> dimatikan, jadi kertasmu sering melewatkan kesempatan menang.');
+  if (ib < 0) what.push('Aturan <b>menghalangi</b> dimatikan, jadi Si Penantang bisa menang dengan mudah.');
+  if (iw > 0 || ib > 1 || (iw >= 0 && ib >= 0 && ib < iw)) what.push('Aturan penting sebaiknya di atas. Kertas berhenti membaca begitu menemukan aturan pertama yang bisa dijalankan, jadi aturan di bawah bisa tidak pernah terpakai.');
+  if (Lo === 0) what.push('Dengan urutan menang → halangi → tengah → sudut, kertas tidak pernah kalah ketika jalan duluan.');
+  what.push(`Aturan yang paling sering dipakai: ${Object.entries(fired).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([r,n]) => `${RULE[r].toLowerCase().replace('.','')} (${n}×)`).join(', ')}.`);
+  Bina.result({
+    stars, title: Lo === 0 ? 'Kertasmu tak terkalahkan!' : stars ? 'Kertasmu cukup kuat' : 'Kertasmu masih sering kalah',
+    subtitle: 'Level 4: Tulis aturanmu sendiri',
+    metrics: [[W, 'menang'], [D, 'seri'], [Lo, 'kalah']],
+    what,
+    ai: 'Kamu baru saja merancang sistem AI berbasis aturan. <b>Urutan</b> dan <b>kelengkapan</b> aturan menentukan seberapa “cerdas” mesin terlihat. Pengujian berulang seperti 20 pertandingan ini juga dilakukan para perancang AI sungguhan sebelum sistemnya dipakai.',
+    ct: ['Algoritma','Evaluasi','Debugging'],
+    onRetry: () => {}, next: null
+  });
+}
+start(1);
+</script>
+</body>
+</html>

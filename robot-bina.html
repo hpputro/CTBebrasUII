@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robot Bina · Petualangan Bina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{--accent:#5BC0CC}
+  .board{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;flex:1;min-height:0}
+  .stage{display:flex;align-items:center;justify-content:center;background:#CFEFF3;border-color:#A9DDE4}
+  .grid{display:grid;gap:6px;width:100%;max-width:760px}
+  .cell{aspect-ratio:1;border-radius:14px;background:#F4FBF6;display:grid;place-items:center;font-size:clamp(26px,3.6vw,52px);position:relative}
+  .cell.rock{background:#9AA9B8}
+  .cell.goal{background:#FFE7A8}
+  .cell.trail{background:#DFF3E2}
+  .robot{position:absolute;inset:6%;display:grid;place-items:center}
+  .robot svg{width:88%;height:88%}
+  .robot .dir{position:absolute;right:-4px;bottom:-4px;background:var(--navy);color:#fff;border-radius:50%;width:42%;height:42%;display:grid;place-items:center;font-size:.42em;font-weight:800}
+  .crash{animation:shake .35s}
+  @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  .palette{display:flex;gap:10px;flex-wrap:wrap}
+  .cmd{border:0;border-radius:16px;min-height:64px;padding:8px 16px;font-weight:800;display:flex;align-items:center;gap:8px;color:#fff}
+  .cmd .icon{font-size:1.4em}
+  .c-F{background:#2F8FA0}.c-L{background:#7058C4}.c-R{background:#C4588F}.c-loop{background:#E0902E}
+  .prog{display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;min-height:120px;background:var(--sky);border-radius:16px;padding:12px;margin-top:10px}
+  .blk{border-radius:12px;padding:6px 12px;color:#fff;font-weight:800;display:flex;align-items:center;gap:6px;min-height:46px}
+  .blk.now{outline:4px solid var(--gold);outline-offset:2px}
+  .loop{background:#FCEBD3;border:3px solid #E0902E;border-radius:14px;padding:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .loop .head{background:#E0902E;color:#fff;border-radius:10px;padding:4px 10px;font-weight:800}
+  .loop.open{border-style:dashed}
+  .meter{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-weight:700;color:var(--muted)}
+  .meter b{color:var(--navy)}
+  .sel{min-height:52px;border-radius:12px;border:2px solid var(--line);font-family:inherit;font-size:inherit;padding:0 8px}
+  @media (max-width:1000px){.board{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-game="g3">
+<div class="app">
+  <div class="topbar"></div>
+  <div class="main">
+    <section class="story" id="story"></section>
+    <section class="board">
+      <div class="panel stage"><div class="grid" id="grid"></div></div>
+      <div class="panel">
+        <h3>🧩 Perintah</h3>
+        <div class="palette" id="palette"></div>
+        <div class="meter"><span>Program Bina</span><span id="meter"></span></div>
+        <div class="prog" id="prog" aria-live="polite"></div>
+        <div class="actions" style="justify-content:flex-start;margin-top:12px">
+          <button class="btn btn-soft" id="undo"><span class="icon">⌫</span> Hapus satu</button>
+          <button class="btn btn-soft" id="clear"><span class="icon">🗑</span> Kosongkan</button>
+        </div>
+      </div>
+    </section>
+    <div class="actions">
+      <button class="btn btn-soft" id="resetPos"><span class="icon">↺</span> Kembali ke awal</button>
+      <button class="btn btn-main" id="run"><span class="icon">▶</span> Jalankan</button>
+    </div>
+  </div>
+</div>
+<script src="common.js"></script>
+<script>
+const LEVELS = [
+  { title:'Pulang ke sarang', story:'Bina ingin pulang ke sarang 🏠. Susun perintah agar Bina sampai, lalu tekan Jalankan.',
+    map:['......','S...G.','......'], best:4, loop:false, max:null },
+  { title:'Belok di tikungan', story:'Ada batu di jalan. Bina harus berbelok. Ingat: belok kiri dan kanan dilihat dari arah hadap Bina.',
+    map:['S..#.','##.#.','##..G'], best:8, loop:false, max:null },
+  { title:'Kumpulkan kayu', story:'Bina perlu dua batang kayu 🪵 untuk memperbaiki sarang. Kumpulkan semuanya sebelum pulang.',
+    map:['S.K..','####.','G.K..'], best:12, loop:false, max:null },
+  { title:'Tangga berulang', story:'Jalannya seperti tangga. Kamu hanya punya 7 balok perintah! Cari pola yang berulang dan gunakan Ulangi.',
+    map:['S.####','#..###','##..##','###..G'], best:7, loop:true, max:7 },
+];
+const DIRS = [[0,1],[1,0],[0,-1],[-1,0]]; const ARROW = ['▶','▼','◀','▲'];
+const NAME = { F:'Maju', L:'Belok kiri', R:'Belok kanan' };
+const ICON = { F:'⬆', L:'↶', R:'↷' };
+let L = 1, lv, prog = [], openLoop = null, loopN = 3, running = false, pos, kayu;
+const $ = id => document.getElementById(id);
+const hdr = Bina.header({ game:'g3', icon:'🦫', title:'Robot Bina', count:4, current:() => L, onPick:start, onHelp:help });
+
+function help(){
+  Bina.info('Cara bermain', `<p>Ketuk perintah untuk menyusun program: <b>Maju</b> satu kotak, <b>Belok kiri</b>, atau <b>Belok kanan</b>. Panah kecil di Bina menunjukkan arah hadapnya.</p>
+  <p style="margin-top:10px">Tekan <b>Jalankan</b> dan lihat Bina mengikuti perintahmu satu per satu, persis seperti yang kamu tulis.</p>
+  <p style="margin-top:10px">Di level 4, gunakan <b>Ulangi</b>: ketuk Ulangi, masukkan perintah yang mau diulang, lalu ketuk <b>Tutup ulangi</b>.</p>`);
+}
+function find(ch){ for (let r = 0; r < lv.map.length; r++) { const c = lv.map[r].indexOf(ch); if (c >= 0) return [r,c]; } }
+function start(n){
+  L = n; lv = LEVELS[n-1]; prog = []; openLoop = null;
+  $('story').innerHTML = `${Bina.bina}<div><h2>Level ${n}: ${lv.title}</h2><p>${lv.story}</p></div>`;
+  resetPos(); palette(); drawProg(); hdr.redraw();
+}
+function resetPos(){ const s = find('S'); pos = { r:s[0], c:s[1], d:0 }; kayu = new Set(); trail = new Set([s.join(',')]); drawGrid(); }
+let trail = new Set();
+function drawGrid(crash){
+  const g = $('grid'); g.style.gridTemplateColumns = `repeat(${lv.map[0].length},1fr)`; g.innerHTML = '';
+  lv.map.forEach((row,r) => [...row].forEach((ch,c) => {
+    const cell = document.createElement('div'); cell.className = 'cell';
+    if (ch === '#') { cell.classList.add('rock'); cell.textContent = '🪨'; }
+    if (ch === 'G') { cell.classList.add('goal'); cell.textContent = '🏠'; }
+    if (ch === 'K' && !kayu.has(r+','+c)) cell.textContent = '🪵';
+    if (trail.has(r+','+c) && ch !== 'G' && ch !== '#') cell.classList.add('trail');
+    if (pos.r === r && pos.c === c) {
+      const rb = document.createElement('div'); rb.className = 'robot' + (crash ? ' crash' : '');
+      rb.innerHTML = Bina.bina + `<span class="dir">${ARROW[pos.d]}</span>`; cell.appendChild(rb);
+    }
+    g.appendChild(cell);
+  }));
+}
+function count(list = prog){ return list.reduce((a,b) => a + (b.t === 'loop' ? 1 + count(b.body) : 1), 0); }
+function palette(){
+  const p = $('palette'); p.innerHTML = '';
+  ['F','L','R'].forEach(t => { const b = document.createElement('button'); b.className = 'cmd c-' + t; b.innerHTML = `<span class="icon">${ICON[t]}</span>${NAME[t]}`; b.onclick = () => add({t}); p.appendChild(b); });
+  if (lv.loop) {
+    const sel = document.createElement('select'); sel.className = 'sel'; sel.setAttribute('aria-label','Jumlah ulangan');
+    [2,3,4,5].forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n + '×'; if (n === loopN) o.selected = true; sel.appendChild(o); });
+    sel.onchange = e => loopN = +e.target.value;
+    const b = document.createElement('button'); b.className = 'cmd c-loop'; b.id = 'loopBtn';
+    b.onclick = () => { if (openLoop) { openLoop = null; drawProg(); palette(); } else add({ t:'loop', n:loopN, body:[] }); };
+    b.innerHTML = openLoop ? '<span class="icon">✔</span>Tutup ulangi' : '<span class="icon">🔁</span>Ulangi';
+    p.appendChild(b); if (!openLoop) p.appendChild(sel);
+  }
+}
+function add(blk){
+  if (running) return;
+  if (lv.max && count() + 1 > lv.max) { Bina.toast(`Balok perintah paling banyak ${lv.max}.`); return; }
+  if (blk.t === 'loop') { prog.push(blk); openLoop = blk; palette(); }
+  else (openLoop ? openLoop.body : prog).push(blk);
+  drawProg();
+}
+function blkHtml(b, id){ return `<span class="blk c-${b.t}" data-id="${id}">${ICON[b.t]} ${NAME[b.t]}</span>`; }
+function drawProg(){
+  const el = $('prog');
+  if (!prog.length) { el.innerHTML = '<span class="hint">Belum ada perintah. Ketuk perintah di atas.</span>'; }
+  else el.innerHTML = prog.map((b,i) => b.t === 'loop'
+    ? `<span class="loop ${b === openLoop ? 'open' : ''}"><span class="head" data-id="${i}">🔁 Ulangi ${b.n}×</span>${b.body.map((x,j) => blkHtml(x, i+'-'+j)).join('') || '<span class="hint">isi di sini</span>'}</span>`
+    : blkHtml(b, i)).join('');
+  $('meter').innerHTML = `<b>${count()}</b> balok${lv.max ? ` dari ${lv.max}` : ''}`;
+}
+function flatten(){ const s = []; prog.forEach((b,i) => { if (b.t === 'loop') { for (let k = 0; k < b.n; k++) b.body.forEach((x,j) => s.push({ t:x.t, id:i+'-'+j, loop:i })); } else s.push({ t:b.t, id:String(i) }); }); return s; }
+function highlight(id){ document.querySelectorAll('.blk.now,.head.now').forEach(e => e.classList.remove('now')); const e = document.querySelector(`[data-id="${id}"]`); if (e) e.classList.add('now'); }
+
+async function run(){
+  if (running) return;
+  if (!prog.length) { Bina.toast('Susun perintah dulu.'); return; }
+  if (openLoop) { openLoop = null; palette(); drawProg(); }
+  running = true; $('run').disabled = true; resetPos();
+  const steps = flatten(); let outcome = null, stepNo = 0;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  await wait(250);
+  for (const s of steps) {
+    stepNo++; highlight(s.id);
+    if (s.t === 'L') pos.d = (pos.d + 3) % 4;
+    if (s.t === 'R') pos.d = (pos.d + 1) % 4;
+    if (s.t === 'F') {
+      const nr = pos.r + DIRS[pos.d][0], nc = pos.c + DIRS[pos.d][1];
+      const ch = (lv.map[nr] || '')[nc];
+      if (ch === undefined || ch === '#') { drawGrid(true); outcome = { type: ch === '#' ? 'rock' : 'edge', step: stepNo, total: steps.length }; break; }
+      pos.r = nr; pos.c = nc; trail.add(nr+','+nc);
+      if (ch === 'K') kayu.add(nr+','+nc);
+    }
+    drawGrid(); await wait(380);
+  }
+  const needK = lv.map.join('').split('K').length - 1;
+  const atGoal = lv.map[pos.r][pos.c] === 'G';
+  if (!outcome) outcome = atGoal && kayu.size === needK ? { type:'win' } : atGoal ? { type:'kayu' } : { type:'short' };
+  outcome.steps = steps.length;
+  highlight(null); running = false; $('run').disabled = false;
+  setTimeout(() => report(outcome), 450);
+}
+
+function report(o){
+  const blocks = count(), needK = lv.map.join('').split('K').length - 1;
+  let stars = 0;
+  if (o.type === 'win') stars = blocks <= lv.best ? 3 : blocks <= lv.best + 2 ? 2 : 1;
+  if (stars) Bina.save('g3', L, stars);
+  const what = [];
+  if (o.type === 'win') {
+    what.push(`Bina sampai di sarang setelah menjalankan <b>${o.steps}</b> langkah.`);
+    what.push(blocks <= lv.best ? `Programmu hanya memakai ${blocks} balok, sama dengan program terpendek yang kami temukan.` : `Programmu memakai ${blocks} balok. Program terpendek memakai ${lv.best} balok. Adakah perintah yang bisa dibuang?`);
+    if (lv.loop) what.push(prog.some(b => b.t === 'loop') ? 'Kamu memakai <b>Ulangi</b> untuk pola langkah yang sama. Program jadi lebih pendek dan mudah dibaca.' : 'Coba cari pola yang berulang dan gunakan Ulangi.');
+  }
+  if (o.type === 'rock' || o.type === 'edge') {
+    what.push(`Bina ${o.type === 'rock' ? 'menabrak batu' : 'keluar dari peta'} pada langkah ke-${o.step} dari ${o.total}.`);
+    what.push('Periksa perintah sebelum langkah itu. Apakah arah hadap Bina sudah benar sebelum ia maju?');
+    what.push('Mencari dan memperbaiki kesalahan seperti ini disebut <b>debugging</b>.');
+  }
+  if (o.type === 'short') { what.push(`Perintah habis, tetapi Bina belum sampai di sarang. Ia berhenti di baris ${pos.r+1}, kolom ${pos.c+1}.`); what.push('Tambahkan perintah yang kurang, atau periksa beloknya.'); }
+  if (o.type === 'kayu') { what.push(`Bina sampai di sarang, tetapi baru membawa ${kayu.size} dari ${needK} kayu.`); what.push('Ubah jalurnya agar melewati semua kayu.'); }
+  const titles = { win: stars === 3 ? 'Program yang rapi!' : 'Bina sampai di sarang!', rock:'Aduh, ada batu!', edge:'Bina keluar jalur', short:'Belum sampai', kayu:'Kayunya belum lengkap' };
+  Bina.result({
+    stars, title: titles[o.type], subtitle: `Level ${L}: ${lv.title}`,
+    metrics: [[blocks, 'balok perintah'], [lv.best, 'program terpendek'], [o.steps, 'langkah dijalankan']],
+    what,
+    ai: lv.loop ? 'Menemukan langkah yang berulang lalu menuliskannya sekali dengan <b>Ulangi</b> adalah abstraksi. Program AI juga memakai perulangan, misalnya saat memeriksa ribuan contoh satu per satu.'
+      : 'Bina tidak belajar sendiri; ia menjalankan perintahmu <b>persis</b>, termasuk yang salah. Inilah program berbasis aturan. Bandingkan dengan Mesin Penebak Buah yang belajar dari contoh. Banyak sistem AI menggabungkan keduanya.',
+    ct: lv.loop ? ['Algoritma','Abstraksi','Pengenalan pola'] : ['Algoritma','Dekomposisi','Debugging'],
+    next: stars && L < 4 ? () => start(L+1) : null
+  });
+}
+$('run').onclick = run;
+$('undo').onclick = () => { if (running) return; if (openLoop && openLoop.body.length) openLoop.body.pop(); else { const b = prog.pop(); if (b === openLoop) openLoop = null; } palette(); drawProg(); };
+$('clear').onclick = () => { if (running) return; prog = []; openLoop = null; palette(); drawProg(); };
+$('resetPos').onclick = () => { if (!running) resetPos(); };
+start(1);
+</script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mesin Penebak Buah · Petualangan Bina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{--accent:#F4A24B;--accent-soft:#FDEBD8}
+  .board{display:grid;grid-template-columns:1fr 1.35fr 1fr;grid-template-rows:minmax(0,1fr);gap:18px;min-height:0;flex:1}
+  .zone{display:flex;flex-direction:column;min-height:0;overflow:auto}
+  .zone .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px;align-content:start}
+  .machine{background:var(--navy);border-color:var(--navy);color:#fff}
+  .machine h3{color:#fff}
+  .machine .hint{color:#C7D0E8}
+  .slotgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px;margin-top:8px}
+  .empty{border:3px dashed rgba(255,255,255,.35);border-radius:16px;min-height:120px;display:grid;place-items:center;color:#C7D0E8;font-size:.85em;text-align:center;padding:8px}
+  .fruit{position:relative;background:#fff;color:var(--ink);border:3px solid var(--line);border-radius:16px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}
+  button.fruit{font:inherit}
+  button.fruit:hover{border-color:var(--accent)}
+  .fruit.used{opacity:.35}
+  .fruit .emo{height:clamp(40px,7vh,64px);display:grid;place-items:center;line-height:1}
+  .fruit .nm{font-weight:700;font-size:.9em;line-height:1.1}
+  .tags{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+  .tag{font-size:.68em;background:var(--sky);border-radius:999px;padding:1px 8px;display:inline-flex;align-items:center;gap:4px}
+  .tag i{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .tag.off{opacity:.3;text-decoration:line-through}
+  .lab{border:0;border-radius:999px;background:var(--accent);color:var(--navy);font-weight:800;padding:2px 14px;font-size:.85em;margin-top:2px}
+  .lab.edit{outline:3px dashed var(--navy);outline-offset:2px}
+  .rm{position:absolute;top:4px;right:4px;width:34px;height:34px;border-radius:50%;border:0;background:var(--sky);color:var(--navy);font-weight:800}
+  .lock{position:absolute;top:6px;right:8px;font-size:.8em}
+  .verdict{font-weight:800;font-size:.9em;border-radius:999px;padding:2px 12px;margin-top:2px}
+  .verdict.ok{background:#DDF2E0;color:var(--leaf)}
+  .verdict.no{background:#FBE0DB;color:var(--coral)}
+  .verdict.wait{background:var(--sky);color:var(--muted)}
+  .feats{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 4px}
+  .feat{border:0;border-radius:999px;padding:6px 16px;font-weight:700;min-height:44px;background:rgba(255,255,255,.15);color:#fff}
+  .feat.on{background:var(--gold);color:var(--navy)}
+  .counter{font-weight:700;color:var(--gold)}
+  @media (max-width:1000px){.board{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-game="g1">
+<div class="app">
+  <div class="topbar"></div>
+  <div class="main">
+    <section class="story" id="story"></section>
+    <section class="board">
+      <div class="panel zone" id="poolZone"><h3>🧺 Kotak contoh</h3><p class="hint" id="poolHint"></p><div class="grid" id="pool" style="margin-top:8px"></div></div>
+      <div class="panel zone machine"><h3>🤖 Mesin Bina <span class="counter" id="count"></span></h3><p class="hint" id="machHint"></p><div class="feats" id="feats"></div><div class="slotgrid" id="train"></div></div>
+      <div class="panel zone"><h3>🔍 Buah untuk diuji</h3><p class="hint">Mesin belum pernah melihat label buah-buah ini.</p><div class="grid" id="test" style="margin-top:8px"></div></div>
+    </section>
+    <div class="actions">
+      <button class="btn btn-soft" id="reset"><span class="icon">↺</span> Atur ulang</button>
+      <button class="btn btn-main" id="run"><span class="icon">▶</span> Uji mesin</button>
+    </div>
+  </div>
+</div>
+<script src="common.js"></script>
+<script>
+const COL = { merah:'#D7263D', hijau:'#5DAA3A', oranye:'#F08A24', kuning:'#F2C230', ungu:'#7B4FA8' };
+const SIZE = { kecil:'clamp(24px,3.8vh,38px)', sedang:'clamp(32px,5.2vh,52px)', besar:'clamp(40px,6.8vh,68px)' };
+const F = {
+  apelM:{e:'🍎',n:'Apel merah',lab:'Apel',w:'merah',b:'bulat',u:'sedang'},
+  apelH:{e:'🍏',n:'Apel hijau',lab:'Apel',w:'hijau',b:'bulat',u:'sedang'},
+  jeruk:{e:'🍊',n:'Jeruk',lab:'Jeruk',w:'oranye',b:'bulat',u:'sedang'},
+  pisang:{e:'🍌',n:'Pisang',lab:'Pisang',w:'kuning',b:'panjang',u:'sedang'},
+  pisangH:{e:'🍌',n:'Pisang muda',lab:'Pisang',w:'hijau',b:'panjang',u:'sedang',tint:'hue-rotate(55deg) saturate(1.2)'},
+  anggur:{e:'🍇',n:'Anggur ungu',lab:'Anggur',w:'ungu',b:'bulat',u:'kecil'},
+  anggurH:{e:'🍇',n:'Anggur hijau',lab:'Anggur',w:'hijau',b:'bulat',u:'kecil',tint:'hue-rotate(200deg) saturate(1.2) brightness(1.1)'},
+  semangka:{e:'🍉',n:'Semangka',lab:'Semangka',w:'hijau',b:'bulat',u:'besar'},
+  pir:{e:'🍐',n:'Pir hijau',lab:'Pir',w:'hijau',b:'lonjong',u:'sedang'},
+  pirK:{e:'🍐',n:'Pir kuning',lab:'Pir',w:'kuning',b:'lonjong',u:'sedang',tint:'hue-rotate(-45deg) saturate(1.4) brightness(1.1)'},
+};
+const LABELS = ['Apel','Jeruk','Pisang','Anggur','Semangka','Pir'];
+const FEATS = [['w','warna'],['b','bentuk'],['u','ukuran']];
+
+const LEVELS = [
+  { title:'Kenalkan buah', story:'Mesin Bina masih kosong. Ketuk buah di kotak contoh untuk mengajarkannya ke mesin, lalu tekan Uji mesin.',
+    pool:['apelM','jeruk','pisang','anggur'], train:[], maxAdd:4, test:['apelM','jeruk','pisang','anggur'],
+    ai:'Inilah inti pembelajaran mesin (<i>machine learning</i>): mesin tidak diberi aturan, tetapi diberi <b>contoh berlabel</b> (data latih). Saat melihat buah baru, mesin mencari contoh yang paling mirip.', ct:['Pengenalan pola','Data latih'] },
+  { title:'Contoh yang beragam', story:'Mesin sudah belajar empat contoh. Tapi di pasar ada apel hijau dan pisang muda! Tambahkan paling banyak dua contoh yang paling membantu.',
+    pool:['apelH','pisangH','semangka','anggur'], train:['apelM','jeruk','pisang','pir'], fixed:true, maxAdd:2, test:['apelH','pisangH','jeruk','pir'],
+    ai:'AI hanya sebaik datanya. Bila data latih tidak mewakili keragaman dunia nyata, misalnya hanya apel merah, AI akan bingung atau keliru saat bertemu yang berbeda.', ct:['Pengenalan pola','Evaluasi'] },
+  { title:'Label yang keliru', story:'Ada satu contoh yang diberi label salah. Ketuk labelnya untuk menggantinya, lalu uji lagi.',
+    pool:[], train:['apelM','apelH','jeruk','pisang','anggur','pir'], wrong:{ pisang:'Jeruk' }, fixed:true, editLabels:true, maxAdd:0, test:['pisang','jeruk','apelH','anggur'],
+    ai:'Mesin percaya penuh pada label yang diberikan manusia. Label yang salah membuat mesin mempelajari hal yang salah. Karena itu, pemberian label (<i>labelling</i>) dalam AI harus teliti.', ct:['Evaluasi','Debugging'] },
+  { title:'Pilih ciri penting', story:'Mesin boleh melihat warna, bentuk, dan ukuran. Nyalakan atau matikan ciri sampai mesin menebak semua buah dengan benar.',
+    pool:[], train:['apelM','apelH','jeruk','pir','pisang','semangka','anggur'], fixed:true, featToggle:true, maxAdd:0, test:['pirK','pisangH','anggurH'],
+    ai:'Memilih ciri (fitur) yang penting dan mengabaikan yang menyesatkan disebut <b>abstraksi</b>. Perancang AI sungguhan juga harus memutuskan ciri apa yang dipakai mesin.', ct:['Abstraksi','Pengenalan pola'] },
+];
+
+let L = 1, lv, train, pool, feats, labelsOverride, tested = false;
+const $ = id => document.getElementById(id);
+const hdr = Bina.header({ game:'g1', icon:'🍎', title:'Mesin Penebak Buah', count:4, current:() => L, onPick:start, onHelp:help });
+
+function help(){
+  Bina.info('Cara bermain', `<p>Mesin Bina belajar dari <b>contoh</b>. Setiap contoh punya ciri: warna, bentuk, dan ukuran, serta label nama buah.</p>
+  <p style="margin-top:10px">Saat diuji, mesin membandingkan buah baru dengan semua contoh dan memilih label dari contoh yang <b>paling banyak cirinya cocok</b>. Bila ada dua contoh sama miripnya dengan label berbeda, mesin akan <b>ragu</b>.</p>
+  <p style="margin-top:10px">Tugasmu: berikan contoh yang tepat agar mesin menebak dengan benar.</p>`);
+}
+
+function start(n){
+  L = n; lv = LEVELS[n-1]; tested = false;
+  train = lv.train.slice(); pool = lv.pool.slice();
+  labelsOverride = Object.assign({}, lv.wrong || {});
+  feats = { w:true, b:true, u:true };
+  $('story').innerHTML = `${Bina.bina}<div><h2>Level ${n}: ${lv.title}</h2><p>${lv.story}</p></div>`;
+  $('poolZone').style.display = lv.pool.length ? '' : 'none';
+  document.querySelector('.board').style.gridTemplateColumns = lv.pool.length ? '' : '1.5fr 1fr';
+  hdr.redraw(); draw();
+}
+const label = k => labelsOverride[k] || F[k].lab;
+const addedCount = () => train.length - lv.train.length;
+
+function card(k, mode){
+  const f = F[k];
+  const el = document.createElement(mode === 'pool' ? 'button' : 'div');
+  el.className = 'fruit' + (mode === 'pool' && train.includes(k) ? ' used' : '');
+  const tags = FEATS.map(([key,nm]) => `<span class="tag ${mode !== 'pool' && !feats[key] ? 'off' : ''}">${key==='w' ? `<i style="background:${COL[f.w]}"></i>` : ''}${f[key]}</span>`).join('');
+  const filt = f.tint ? 'filter:' + f.tint : '';
+  el.innerHTML = `<div class="emo" style="font-size:${SIZE[f.u]}"><span style="${filt}">${f.e}</span></div><div class="nm">${f.n}</div><div class="tags">${tags}</div>`;
+  if (mode === 'pool') {
+    el.innerHTML += `<span class="lab">${f.lab}</span>`;
+    el.setAttribute('aria-label', `Tambahkan contoh ${f.n}`);
+    el.onclick = () => addTrain(k);
+  }
+  if (mode === 'train') {
+    const b = document.createElement('button');
+    b.className = 'lab' + (lv.editLabels ? ' edit' : ''); b.textContent = label(k);
+    if (lv.editLabels) { b.title = 'Ketuk untuk mengganti label'; b.onclick = () => { const i = LABELS.indexOf(label(k)); labelsOverride[k] = LABELS[(i+1) % LABELS.length]; tested=false; draw(); }; }
+    else b.disabled = true;
+    el.appendChild(b);
+    if (!lv.fixed || !lv.train.includes(k)) {
+      const r = document.createElement('button'); r.className = 'rm'; r.textContent = '×'; r.setAttribute('aria-label', `Keluarkan ${f.n}`);
+      r.onclick = () => { train = train.filter(x => x !== k); tested=false; draw(); };
+      el.appendChild(r);
+    } else { const s = document.createElement('span'); s.className = 'lock'; s.textContent = '📌'; s.title = 'Contoh bawaan'; el.appendChild(s); }
+  }
+  if (mode === 'test') { const v = document.createElement('span'); v.className = 'verdict wait'; v.textContent = 'Belum diuji'; v.id = 'v-' + k; el.appendChild(v); }
+  return el;
+}
+function addTrain(k){
+  if (train.includes(k)) { train = train.filter(x => x !== k); tested=false; draw(); return; }
+  if (addedCount() >= lv.maxAdd) { Bina.toast(`Mesin hanya boleh diberi ${lv.maxAdd} contoh tambahan.`); return; }
+  train.push(k); tested=false; draw();
+}
+function draw(){
+  $('pool').innerHTML = ''; pool.forEach(k => $('pool').appendChild(card(k,'pool')));
+  $('poolHint').textContent = lv.pool.length ? 'Ketuk buah untuk menambah atau mengeluarkan contoh.' : '';
+  $('train').innerHTML = '';
+  train.forEach(k => $('train').appendChild(card(k,'train')));
+  if (!train.length) $('train').innerHTML = '<div class="empty">Mesin belum punya contoh.<br>Ketuk buah di kotak contoh.</div>';
+  $('count').textContent = lv.maxAdd ? `(${addedCount()} / ${lv.maxAdd} contoh tambahan)` : '';
+  $('machHint').textContent = lv.editLabels ? 'Ketuk label untuk menggantinya.' : lv.featToggle ? 'Pilih ciri yang boleh dilihat mesin:' : 'Contoh yang dipelajari mesin.';
+  $('feats').innerHTML = '';
+  if (lv.featToggle) FEATS.forEach(([key,nm]) => {
+    const b = document.createElement('button'); b.className = 'feat' + (feats[key] ? ' on' : ''); b.textContent = (feats[key] ? '👁 ' : '🚫 ') + nm;
+    b.setAttribute('aria-pressed', feats[key]);
+    b.onclick = () => { feats[key] = !feats[key]; tested=false; draw(); };
+    $('feats').appendChild(b);
+  });
+  $('test').innerHTML = ''; lv.test.forEach(k => $('test').appendChild(card(k,'test')));
+}
+
+function predict(t){
+  const act = FEATS.filter(([k]) => feats[k]).map(([k]) => k);
+  let best = -1, cands = [];
+  train.forEach(k => {
+    const match = act.filter(a => F[k][a] === F[t][a]);
+    if (match.length > best) { best = match.length; cands = [{k, match}]; }
+    else if (match.length === best) cands.push({k, match});
+  });
+  const labs = [...new Set(cands.map(c => label(c.k)))];
+  return { cands, best, guess: labs.length === 1 ? labs[0] : null, labs };
+}
+
+function run(){
+  if (!train.length) { Bina.toast('Beri mesin contoh dulu.'); return; }
+  if (lv.featToggle && !Object.values(feats).some(Boolean)) { Bina.toast('Nyalakan minimal satu ciri.'); return; }
+  $('run').disabled = true;
+  const res = lv.test.map(t => ({ t, ...predict(t) }));
+  res.forEach((r,i) => setTimeout(() => {
+    const v = $('v-' + r.t); const ok = r.guess === F[r.t].lab;
+    v.className = 'verdict ' + (ok ? 'ok' : 'no');
+    v.textContent = r.guess ? `${ok ? '✓' : '✗'} “${r.guess}”` : '✗ Ragu-ragu';
+  }, 450 * (i+1)));
+  setTimeout(() => { $('run').disabled = false; report(res); }, 450 * res.length + 700);
+}
+
+function emo(k){ return F[k].e; }
+function report(res){
+  const correct = res.filter(r => r.guess === F[r.t].lab).length, total = res.length;
+  const stars = correct === total ? 3 : correct >= total - 1 && total >= 3 ? 2 : correct >= Math.ceil(total/2) ? 1 : 0;
+  if (stars) Bina.save('g1', L, stars);
+  const what = [];
+  const known = new Set(train.map(label));
+  const missing = [...new Set(lv.test.map(t => F[t].lab))].filter(x => !known.has(x));
+  if (missing.length) what.push(`Mesin tidak pernah diberi contoh <b>${missing.join(', ')}</b>, jadi ia tidak mungkin menebak buah itu.`);
+  const wrongLab = train.filter(k => label(k) !== F[k].lab);
+  if (wrongLab.length) what.push(`Contoh ${wrongLab.map(k => `${emo(k)} ${F[k].n}`).join(', ')} masih berlabel keliru (“${wrongLab.map(label).join('”, “')}”). Mesin mempercayainya.`);
+  const ragu = res.filter(r => !r.guess);
+  if (ragu.length) what.push(`Untuk ${ragu.map(r => F[r.t].n.toLowerCase()).join(' dan ')}, ada beberapa contoh yang <b>sama miripnya</b> tetapi labelnya berbeda, sehingga mesin ragu.`);
+  if (lv.featToggle) {
+    const on = FEATS.filter(([k]) => feats[k]).map(([,n]) => n);
+    what.push(`Mesin hanya melihat: <b>${on.join(', ')}</b>.`);
+    if (feats.w) what.push('Warna buah bisa menyesatkan: pisang muda berwarna hijau, pir bisa kuning, anggur ada yang hijau.');
+    else what.push('Tanpa warna, mesin fokus pada bentuk dan ukuran yang lebih bisa diandalkan untuk buah-buah ini.');
+  }
+  if (!what.length || correct === total) what.push(correct === total ? 'Setiap buah uji punya contoh yang cukup mirip dengan label yang tepat, jadi mesin menebak dengan benar.' : 'Periksa baris yang salah pada tabel untuk melihat contoh mana yang membuat mesin keliru.');
+  const rows = res.map(r => {
+    const ok = r.guess === F[r.t].lab;
+    const near = r.cands.map(c => `${emo(c.k)} ${F[c.k].n} <small>(${label(c.k)})</small>`).join('<br>');
+    const FN = { w:'warna', b:'bentuk', u:'ukuran' };
+    const m = r.cands[0] ? (r.cands[0].match.map(x => FN[x]).join(', ') || 'tidak ada') : '–';
+    return `<tr><td>${emo(r.t)} ${F[r.t].n}</td><td>${near || '–'}</td><td>${r.best} ciri: ${m}</td><td>${r.guess ? `“${r.guess}”` : 'Ragu-ragu'}</td><td class="${ok?'ok':'no'}">${ok?'Benar':'Salah'}</td></tr>`;
+  }).join('');
+  Bina.result({
+    stars, title: stars ? (stars === 3 ? 'Mesin menebak semuanya!' : 'Hampir sempurna') : 'Mesin masih banyak salah',
+    subtitle: `Level ${L}: ${lv.title}`,
+    metrics: [[`${correct} / ${total}`, 'tebakan benar'], [train.length, 'contoh dipelajari']],
+    detail: `<table class="detail"><tr><th>Buah uji</th><th>Paling mirip dengan</th><th>Ciri yang cocok</th><th>Tebakan</th><th>Hasil</th></tr>${rows}</table>`,
+    what, ai: lv.ai, ct: lv.ct,
+    onRetry: () => {}, next: L < 4 && stars ? () => start(L+1) : null
+  });
+}
+$('run').onclick = run;
+$('reset').onclick = () => start(L);
+start(1);
+</script>
+</body>
+</html>

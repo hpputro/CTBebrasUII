@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pohon Tebakan · Petualangan Bina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{--accent:#6CBF6E}
+  .board{display:grid;grid-template-columns:minmax(360px,1fr) 2fr;grid-template-rows:minmax(0,1fr);gap:18px;flex:1;min-height:0}
+  .ftable{width:100%;border-collapse:collapse;font-size:.78em}
+  .ftable th{font-size:.78em;color:var(--muted);padding:4px 2px;text-align:center;line-height:1.05}
+  .ftable td{padding:4px 2px;text-align:center;border-top:2px solid var(--sky)}
+  .ftable td:first-child{text-align:left;white-space:nowrap;font-weight:700}
+  .y{color:var(--leaf);font-weight:800}.n{color:#B9C1D0}
+  .treebox{overflow:auto;display:flex;flex-direction:column;min-height:0}
+  .treewrap{flex:1;min-height:0;overflow:auto}
+  .tree{display:flex;justify-content:center;padding:6px 4px 14px;width:max-content;margin:0 auto}
+  .tn{display:flex;flex-direction:column;align-items:center}
+  .kids{display:flex;gap:14px;margin-top:4px}
+  .branch{display:flex;flex-direction:column;align-items:center}
+  .branch .stem{width:4px;height:14px;background:#B7C6D3}
+  .yn{font-size:.72em;font-weight:800;border-radius:999px;padding:0 10px}
+  .yn.ya{background:#DDF2E0;color:var(--leaf)}.yn.tdk{background:#FBE0DB;color:var(--coral)}
+  .tbox{border-radius:16px;padding:8px 12px;border:3px solid var(--line);background:#fff;display:flex;flex-direction:column;align-items:center;gap:6px;max-width:320px}
+  .group{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;font-size:1.4em;line-height:1.1}
+  .tbox.q{background:var(--navy);color:#fff;border-color:var(--navy);flex-direction:row;gap:8px}
+  .tbox.q b{font-size:.95em}
+  .tbox.q button{border:0;background:rgba(255,255,255,.18);color:#fff;border-radius:50%;width:32px;height:32px;font-weight:800}
+  .tbox.leaf{background:#E8F6EA;border-color:#9BD3A0}
+  .tbox.leaf .nm{font-weight:800;color:var(--leaf);font-size:.85em}
+  .pick{border:0;background:var(--gold);color:var(--navy);font-weight:800;border-radius:999px;padding:4px 14px;min-height:40px}
+  .qlist{display:flex;flex-direction:column;gap:6px;width:260px}
+  .qlist button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:6px 10px;text-align:left;font-weight:700;display:flex;justify-content:space-between;gap:8px}
+  .qlist button:hover:not(:disabled){border-color:var(--navy)}
+  .qlist button:disabled{opacity:.45;cursor:not-allowed}
+  .qlist small{color:var(--muted);font-weight:500}
+  .goal{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+  .goal span{background:var(--sky);border-radius:999px;padding:4px 14px;font-weight:700;font-size:.85em}
+  .path{font-size:.85em;color:var(--muted)}
+  @media (max-width:1000px){.board{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-game="g2">
+<div class="app">
+  <div class="topbar"></div>
+  <div class="main">
+    <section class="story" id="story"></section>
+    <section class="board">
+      <div class="panel" style="overflow:auto"><h3>📋 Tabel ciri hewan</h3><p class="hint" style="margin-bottom:6px">✓ = ya, · = tidak</p><table class="ftable" id="ftable"></table></div>
+      <div class="panel treebox"><div class="goal" id="goal"></div><div class="treewrap" id="treewrap"><div class="tree" id="tree"></div></div></div>
+    </section>
+    <div class="actions">
+      <button class="btn btn-soft" id="reset"><span class="icon">↺</span> Mulai ulang</button>
+      <button class="btn btn-main" id="run"><span class="icon">▶</span> Uji pohon</button>
+    </div>
+  </div>
+</div>
+<script src="common.js"></script>
+<script>
+const A = {
+  ayam:{e:'🐔',n:'Ayam',kaki:1,sayap:1,renang:0,telur:1,rambut:0,unggas:1,cangkang:0},
+  bebek:{e:'🦆',n:'Bebek',kaki:1,sayap:1,renang:1,telur:1,rambut:0,unggas:1,cangkang:0},
+  ikan:{e:'🐟',n:'Ikan',kaki:0,sayap:0,renang:1,telur:1,rambut:0,unggas:0,cangkang:0},
+  kucing:{e:'🐱',n:'Kucing',kaki:1,sayap:0,renang:0,telur:0,rambut:1,unggas:0,cangkang:0},
+  katak:{e:'🐸',n:'Katak',kaki:1,sayap:0,renang:1,telur:1,rambut:0,unggas:0,cangkang:0},
+  ular:{e:'🐍',n:'Ular',kaki:0,sayap:0,renang:0,telur:1,rambut:0,unggas:0,cangkang:0},
+  kupu:{e:'🦋',n:'Kupu-kupu',kaki:1,sayap:1,renang:0,telur:1,rambut:0,unggas:0,cangkang:0},
+  kelelawar:{e:'🦇',n:'Kelelawar',kaki:1,sayap:1,renang:0,telur:0,rambut:1,unggas:0,cangkang:0},
+  penyu:{e:'🐢',n:'Penyu',kaki:1,sayap:0,renang:1,telur:1,rambut:0,unggas:0,cangkang:1},
+};
+const Q = [['kaki','Berkaki?'],['sayap','Bersayap?'],['renang','Pandai berenang?'],['telur','Bertelur?'],['rambut','Berambut?'],['unggas','Berbulu unggas?'],['cangkang','Bercangkang?']];
+const qName = k => Q.find(x => x[0] === k)[1];
+const SHORT = { kaki:'Kaki', sayap:'Sayap', renang:'Renang', telur:'Telur', rambut:'Rambut', unggas:'Bulu unggas', cangkang:'Cangkang' };
+const LEVELS = [
+  { title:'Empat hewan', story:'Bina memikirkan satu hewan. Susun pertanyaan ya/tidak agar setiap hewan bisa ditebak. Mulai dari kotak paling atas.',
+    animals:['ayam','ikan','kucing','ular'], qs:['kaki','sayap','renang','telur','rambut','unggas'], target:2, preview:true },
+  { title:'Enam hewan', story:'Sekarang ada enam hewan. Bisakah setiap hewan ditebak dengan paling banyak 3 pertanyaan?',
+    animals:['ayam','bebek','ikan','kucing','katak','ular'], qs:['kaki','sayap','renang','telur','rambut','unggas'], target:3, preview:true },
+  { title:'Delapan hewan', story:'Delapan hewan, tetap paling banyak 3 pertanyaan! Kali ini jumlah pembagian tidak ditampilkan. Pikirkan pertanyaan yang membagi kelompok sama besar.',
+    animals:['ayam','bebek','ikan','kucing','katak','ular','kupu','kelelawar'], qs:['kaki','sayap','renang','telur','rambut','unggas'], target:3, preview:false },
+  { title:'Hewan baru datang', story:'Penyu bergabung! Di tabel lama, penyu sama persis dengan katak. Untung ada pertanyaan baru: Bercangkang? Susun pohon untuk sembilan hewan.',
+    animals:['ayam','bebek','ikan','kucing','katak','ular','kupu','kelelawar','penyu'], qs:['kaki','sayap','renang','telur','rambut','unggas','cangkang'], target:4, preview:false },
+];
+let L = 1, lv, root, openNode = null;
+const $ = id => document.getElementById(id);
+const hdr = Bina.header({ game:'g2', icon:'🌳', title:'Pohon Tebakan', count:4, current:() => L, onPick:start, onHelp:help });
+
+function help(){
+  Bina.info('Cara bermain', `<p>Kotak paling atas berisi semua hewan. Pilih satu pertanyaan, misalnya <b>Berkaki?</b>. Hewan akan terbagi ke cabang <b>Ya</b> dan <b>Tidak</b> sesuai tabel ciri.</p>
+  <p style="margin-top:10px">Terus pilih pertanyaan untuk setiap kotak yang masih berisi lebih dari satu hewan, sampai setiap kotak berisi satu hewan saja.</p>
+  <p style="margin-top:10px">Semakin sedikit pertanyaan yang dibutuhkan, semakin pintar pohonmu. Tekan <b>Uji pohon</b> untuk melihat hasilnya.</p>`);
+}
+function start(n){
+  L = n; lv = LEVELS[n-1]; root = { animals: lv.animals.slice(), q:null }; openNode = null;
+  $('story').innerHTML = `${Bina.bina}<div><h2>Level ${n}: ${lv.title}</h2><p>${lv.story}</p></div>`;
+  $('goal').innerHTML = `<span>🐾 ${lv.animals.length} hewan</span><span>🎯 Target: paling banyak ${lv.target} pertanyaan</span>`;
+  const qs = lv.qs;
+  $('ftable').innerHTML = `<tr><th></th>${qs.map(k => `<th>${SHORT[k]}</th>`).join('')}</tr>` +
+    lv.animals.map(a => `<tr><td>${A[a].e} ${A[a].n}</td>${qs.map(k => A[a][k] ? '<td class="y">✓</td>' : '<td class="n">·</td>').join('')}</tr>`).join('');
+  hdr.redraw(); draw();
+}
+function split(animals, q){ return { yes: animals.filter(a => A[a][q]), no: animals.filter(a => !A[a][q]) }; }
+function setQ(node, q){ const s = split(node.animals, q); node.q = q; node.yes = { animals:s.yes, q:null }; node.no = { animals:s.no, q:null }; openNode = null; draw(); }
+function clearQ(node){ node.q = null; delete node.yes; delete node.no; draw(); }
+
+function render(node){
+  const wrap = document.createElement('div'); wrap.className = 'tn';
+  const box = document.createElement('div');
+  const group = `<div class="group" aria-label="${node.animals.map(a=>A[a].n).join(', ')}">${node.animals.map(a => `<span title="${A[a].n}">${A[a].e}</span>`).join('')}</div>`;
+  if (node.animals.length === 1) {
+    box.className = 'tbox leaf'; box.innerHTML = `${group}<span class="nm">${A[node.animals[0]].n}</span>`;
+    wrap.appendChild(box); return wrap;
+  }
+  if (node.q) {
+    box.className = 'tbox'; box.innerHTML = group;
+    const q = document.createElement('div'); q.className = 'tbox q'; q.innerHTML = `<b>${qName(node.q)}</b>`;
+    const x = document.createElement('button'); x.textContent = '×'; x.setAttribute('aria-label', 'Hapus pertanyaan ini'); x.onclick = () => clearQ(node);
+    q.appendChild(x);
+    wrap.appendChild(box); const st = document.createElement('div'); st.className='stem'; st.style.cssText='width:4px;height:10px;background:#B7C6D3'; wrap.appendChild(st); wrap.appendChild(q);
+    const kids = document.createElement('div'); kids.className = 'kids';
+    [['ya','Ya',node.yes],['tdk','Tidak',node.no]].forEach(([c,t,child]) => {
+      const br = document.createElement('div'); br.className = 'branch';
+      br.innerHTML = `<div class="stem"></div><span class="yn ${c}">${t}</span><div class="stem"></div>`;
+      br.appendChild(render(child)); kids.appendChild(br);
+    });
+    wrap.appendChild(kids); return wrap;
+  }
+  box.className = 'tbox'; box.innerHTML = group;
+  if (openNode === node) {
+    const list = document.createElement('div'); list.className = 'qlist';
+    lv.qs.forEach(k => {
+      const s = split(node.animals, k); const b = document.createElement('button');
+      const useless = !s.yes.length || !s.no.length;
+      b.disabled = useless;
+      b.innerHTML = `<span>${qName(k)}</span><small>${useless ? 'tidak membagi' : lv.preview ? `Ya ${s.yes.length} · Tidak ${s.no.length}` : ''}</small>`;
+      b.onclick = () => setQ(node, k); list.appendChild(b);
+    });
+    const c = document.createElement('button'); c.innerHTML = '<span>Tutup</span>'; c.onclick = () => { openNode = null; draw(); }; list.appendChild(c);
+    box.appendChild(list);
+  } else {
+    const p = document.createElement('button'); p.className = 'pick'; p.textContent = '+ Pilih pertanyaan';
+    p.onclick = () => { openNode = node; draw(); }; box.appendChild(p);
+  }
+  wrap.appendChild(box); return wrap;
+}
+function draw(){
+  const t = $('tree'); t.style.zoom = 1; t.innerHTML = ''; t.appendChild(render(root)); $('run').disabled = !complete(root);
+  requestAnimationFrame(() => {
+    const w = $('treewrap'); const z = Math.min(1, (w.clientWidth - 8) / t.scrollWidth, (w.clientHeight - 8) / t.scrollHeight);
+    t.style.zoom = Math.max(0.55, z);
+  });
+}
+window.addEventListener('resize', () => lv && draw());
+function complete(n){ return n.animals.length === 1 || (n.q && complete(n.yes) && complete(n.no)); }
+function paths(n, trail = [], out = {}){
+  if (n.animals.length === 1) { out[n.animals[0]] = trail; return out; }
+  paths(n.yes, trail.concat([[n.q, 'Ya']]), out); paths(n.no, trail.concat([[n.q, 'Tidak']]), out); return out;
+}
+function nodes(n, out = []){ if (n.q) { out.push(n); nodes(n.yes, out); nodes(n.no, out); } return out; }
+
+function run(){
+  if (!complete(root)) return;
+  const P = paths(root), depths = Object.values(P).map(t => t.length);
+  const max = Math.max(...depths), avg = depths.reduce((a,b)=>a+b,0) / depths.length;
+  const stars = max <= lv.target ? 3 : max === lv.target + 1 ? 2 : 1;
+  Bina.save('g2', L, stars);
+  const minNeeded = Math.ceil(Math.log2(lv.animals.length));
+  const ns = nodes(root);
+  const unbalanced = ns.filter(n => Math.abs(n.yes.animals.length - n.no.animals.length) > 1);
+  const what = [];
+  what.push(`Pohonmu butuh paling banyak <b>${max}</b> pertanyaan untuk menebak hewan apa pun. Targetnya ${lv.target}.`);
+  const r = root; what.push(`Pertanyaan pertama, <b>${qName(r.q)}</b>, membagi ${r.animals.length} hewan menjadi ${r.yes.animals.length} dan ${r.no.animals.length}.${Math.abs(r.yes.animals.length - r.no.animals.length) <= 1 ? ' Pembagiannya seimbang, bagus!' : ''}`);
+  if (unbalanced.length) what.push(`Pertanyaan yang kurang seimbang: ${unbalanced.map(n => `<b>${qName(n.q)}</b> (${n.yes.animals.length} : ${n.no.animals.length})`).join(', ')}. Pertanyaan yang hanya memisahkan sedikit hewan membuat pohon lebih dalam.`);
+  what.push(`Setiap pertanyaan ya/tidak membagi kelompok menjadi dua. Dua pertanyaan cukup untuk 4 hewan, tiga untuk 8, empat untuk 16. Untuk ${lv.animals.length} hewan, paling sedikit butuh ${minNeeded} pertanyaan.`);
+  if (L === 4) what.push('Penyu dan katak hanya berbeda pada cangkang. Tanpa pertanyaan baru, pohon lama akan mengira penyu adalah katak.');
+  const rows = lv.animals.map(a => `<tr><td>${A[a].e} ${A[a].n}</td><td class="path">${P[a].map(([q,ans]) => `${qName(q)} <b>${ans}</b>`).join(' → ')}</td><td>${P[a].length}</td></tr>`).join('');
+  Bina.result({
+    stars, title: stars === 3 ? 'Pohon yang efisien!' : stars === 2 ? 'Pohonmu berhasil, tapi bisa lebih pendek' : 'Pohonmu berhasil menebak semua hewan',
+    subtitle: `Level ${L}: ${lv.title}`,
+    metrics: [[max, 'pertanyaan paling banyak'], [avg.toFixed(1).replace('.', ','), 'rata-rata pertanyaan'], [minNeeded, 'jumlah minimal yang mungkin']],
+    detail: `<table class="detail"><tr><th>Hewan</th><th>Jalur pertanyaan</th><th>Jumlah</th></tr>${rows}</table>`,
+    what,
+    ai: L === 4 ? 'Saat data baru datang, model AI perlu diperbarui. Model lama hanya mengenal apa yang pernah dipelajarinya, sehingga hewan baru bisa salah ditebak. Kadang kita juga perlu menambah ciri (fitur) baru.'
+      : 'Inilah <b>pohon keputusan</b> (<i>decision tree</i>), salah satu cara AI mengklasifikasi. Komputer bahkan bisa menyusun pohon sendiri dari data dengan memilih pertanyaan yang paling seimbang membagi kelompok.',
+    ct: ['Dekomposisi','Algoritma', L >= 3 ? 'Abstraksi' : 'Pengenalan pola'],
+    next: L < 4 ? () => start(L+1) : null
+  });
+}
+$('run').onclick = run;
+$('reset').onclick = () => start(L);
+start(1);
+</script>
+</body>
+</html>
