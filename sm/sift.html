@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detektif SIFT · Ekspedisi Bina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{--accent:#C2554E}
+  .board{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:18px;flex:1;min-height:0}
+  .col{display:flex;flex-direction:column;gap:12px;overflow:auto}
+  .post{border:2px solid var(--line);border-radius:18px;padding:14px 16px;background:#fff}
+  .post .who{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .post .av{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:24px;background:var(--sky)}
+  .post .who b{color:var(--navy)}
+  .post .who small{display:block;color:var(--muted)}
+  .post .body{font-size:1.05em}
+  .post .img{margin-top:10px;border-radius:12px;background:#E9EEF4;height:90px;display:grid;place-items:center;color:var(--muted);font-size:.85em}
+  .post .meta{margin-top:8px;color:var(--muted);font-size:.8em}
+  .tag-f{font-size:.7em;background:#FFF0C7;color:#7A5A00;border-radius:999px;padding:1px 10px;font-weight:700;margin-left:6px}
+  .tools{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .tool{border:0;border-radius:16px;padding:10px 14px;text-align:left;color:#fff;min-height:74px;display:flex;gap:12px;align-items:center}
+  .tool .L{font-size:1.6em;font-weight:800;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;flex:0 0 auto}
+  .tool b{display:block;line-height:1.1}.tool small{opacity:.85;line-height:1.1;display:block}
+  .tool.used{outline:4px solid var(--gold);outline-offset:2px}
+  .tS{background:#C2554E}.tI{background:#2F6FD0}.tF{background:#2F8F7A}.tT{background:#7A55B8}.tA{background:#56607C;grid-column:1 / -1}
+  .find{border-left:0;border-radius:14px;padding:10px 14px;background:var(--sky)}
+  .find h4{margin:0 0 4px;color:var(--navy);font-size:.95em}
+  .find p{font-size:.9em}
+  .find.ai{background:#EDEBFA}
+  .verdict{display:flex;gap:10px;flex-wrap:wrap}
+  .verdict .btn{flex:1;justify-content:center;min-width:140px}
+  @media (max-width:1000px){.board{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar"></div>
+  <div class="main">
+    <section class="story" id="story"></section>
+    <section class="board">
+      <div class="panel col"><h3>📱 Unggahan yang diperiksa</h3><div id="post"></div><h3 style="margin-top:6px">🗂 Temuanmu</h3><div id="finds" class="col" style="overflow:visible"><p class="hint">Gunakan alat SIFT di sebelah kanan. Temuan akan muncul di sini.</p></div></div>
+      <div class="panel col"><h3>🔎 Alat SIFT</h3><div class="tools" id="tools"></div><h3 style="margin-top:6px">⚖️ Keputusanmu</h3><p class="hint">Setelah memeriksa, tentukan unggahan ini:</p>
+        <div class="verdict"><button class="btn btn-soft" data-v="benar">✅ Benar</button><button class="btn btn-soft" data-v="menyesatkan">⚠️ Menyesatkan</button><button class="btn btn-soft" data-v="salah">❌ Salah</button></div></div>
+    </section>
+  </div>
+</div>
+<script src="common.js"></script>
+<script>
+const CASES = [
+  { title:'Kabar libur mendadak', story:'Sebuah unggahan ramai dibagikan di grup kelasmu. Semua tempat dan akun di game ini <b>fiktif</b>. Periksa dengan metode SIFT sebelum memutuskan.',
+    post:{ av:'📢', name:'InfoSekolahTerkini', handle:'@infosekolahterkini', body:'BREAKING!! Semua SMP di Kota Embun LIBUR 2 MINGGU mulai besok karena gelombang panas. SEBARKAN sebelum dihapus!!!', img:'Foto ruang kelas kosong', meta:'2.400 kali dibagikan · 1 jam lalu' },
+    S:'Unggahan ini memakai huruf kapital, tanda seru, dan meminta segera disebarkan. Itu tanda untuk menahan diri dulu. Apa yang sebenarnya kamu ketahui tentang akun ini?',
+    I:'Akun dibuat 3 hari lalu dan punya 12 pengikut. Namanya mirip lembaga resmi, tetapi bukan akun Dinas Pendidikan Kota Embun (@disdik.kotaembun, bercentang).',
+    F:'Situs Dinas Pendidikan Kota Embun tidak memuat pengumuman libur; pengumuman terbarunya tentang jadwal ujian. Media lokal Kabar Embun menulis bahwa dinas membantah kabar libur dua minggu.',
+    T:'Foto ruang kelas kosong itu ternyata foto lama dari situs foto gratis, diunggah tahun 2019, bukan dari Kota Embun.',
+    answer:'salah', why:'Tidak ada sumber resmi yang mendukung, akunnya baru dan meniru lembaga, dan fotonya diambil dari tempat lain.' },
+  { title:'Angka yang berubah', story:'Sebuah artikel kesehatan menyebut angka yang mengejutkan. Kali ini, telusuri angkanya sampai ke sumber asli.',
+    post:{ av:'🩺', name:'PortalSehatKita', handle:'portalsehatkita.id', body:'Survei Universitas Embun Raya: 80% remaja Kota Embun tidur KURANG DARI 5 JAM setiap malam! Orang tua wajib waspada.', img:'Grafik batang tanpa sumber', meta:'Artikel · tanpa nama penulis' },
+    S:'Angka yang sangat mengejutkan perlu diperiksa. Dari mana angka 80% dan 5 jam itu berasal?',
+    I:'PortalSehatKita.id adalah situs populer tanpa nama penulis atau redaksi. Halamannya penuh iklan suplemen tidur.',
+    F:'Kabar Embun memberitakan survei yang sama: “Sebagian besar remaja tidur kurang dari waktu yang dianjurkan.” Tidak ada yang menyebut 5 jam.',
+    T:'Laporan asli Universitas Embun Raya: 80% remaja tidur kurang dari 8 jam (anjuran untuk remaja), dan 15% tidur kurang dari 5 jam.',
+    answer:'menyesatkan', why:'Surveinya nyata, tetapi angkanya diubah: 80% itu untuk “kurang dari 8 jam”, bukan “kurang dari 5 jam”.' },
+  { title:'Kabar yang ingin kita percaya', story:'Unggahan ini mungkin membuatmu senang. Justru karena itu, periksa baik-baik. Cari juga bukti yang <b>melawan</b> klaimnya, bukan hanya yang mendukung.',
+    post:{ av:'🎮', name:'GameMasta Store', handle:'@gamemastastore', body:'Penelitian membuktikan: main gim 3 jam sehari bikin nilai matematika NAIK! 🎮📈 Diskon 30% semua konsol hari ini!', img:'Foto anak bermain gim sambil tersenyum', meta:'Unggahan bersponsor' },
+    S:'Klaim ini terasa menyenangkan dan datang bersama promosi. Perasaan senang bisa membuat kita lengah. Siapa yang diuntungkan bila orang percaya?',
+    I:'Ini akun resmi toko konsol gim. Toko ini untung bila orang membeli dan memainkan lebih banyak gim.',
+    F:'Majalah Sains Remaja: penelitian gim teka-teki 20 menit sehari menemukan sedikit peningkatan kemampuan ruang, bukan nilai matematika. Kabar Embun: studi lain menemukan siswa yang bermain lebih dari 3 jam sehari rata-rata tidur lebih sedikit.',
+    T:'Penelitian yang dikutip toko berbunyi: “Siswa yang kadang bermain gim strategi punya nilai sedikit lebih tinggi. Penelitian ini tidak membuktikan bahwa gim menyebabkan nilai naik.” Tidak ada angka 3 jam.',
+    answer:'menyesatkan', why:'Ada penelitian sungguhan, tetapi isinya dilebih-lebihkan: hubungan kecil diubah menjadi “membuktikan”, dan angka 3 jam ditambahkan sendiri.', needF:true },
+  { title:'Asisten AI yang yakin', story:'Artikel ini ditulis AI. Kamu juga punya <b>Asisten AI</b> untuk membantu mencari. Asisten itu cepat, tetapi apakah jawabannya bisa dipercaya begitu saja?',
+    post:{ av:'🤖', name:'BeritaAlam', handle:'beritaalam.ai', body:'Penemuan spesies burung baru, Rangkong Embun, di Taman Nasional Bukit Embun! Temuan ini dimuat di Jurnal Ornitologi Nusantara (2025).', img:'Gambar burung rangkong yang tampak sangat rapi', meta:'Artikel otomatis · 3 menit lalu' },
+    S:'Artikel ini menyebut jurnal ilmiah, sehingga terdengar meyakinkan. Kutipan yang terdengar resmi tetap perlu diperiksa.',
+    I:'BeritaAlam.ai adalah situs yang seluruh artikelnya ditulis otomatis oleh AI, tanpa redaksi manusia yang memeriksa.',
+    F:'Situs resmi Taman Nasional Bukit Embun: survei burung 2025 menemukan kembali rangkong gading, burung langka yang sudah lama tidak terlihat di sana. Tidak ada spesies baru.',
+    T:'Jurnal Ornitologi Nusantara memang ada, tetapi volume 12 tahun 2025 tidak memuat artikel itu, dan tidak ada penulis bernama Dr. Sari Wulandari. Kutipannya dikarang.',
+    A:'Ya, penemuan ini benar. Rangkong Embun dideskripsikan oleh Dr. Sari Wulandari dalam Jurnal Ornitologi Nusantara, vol. 12, hlm. 45–52 (2025).',
+    answer:'menyesatkan', why:'Sebagian benar (ada temuan burung langka), tetapi “spesies baru” keliru, dan kutipan jurnal yang diberikan artikel serta Asisten AI ternyata dikarang.', needT:true },
+];
+const TOOLS = [['S','Stop','Berhenti sejenak','tS'],['I','Investigate','Selidiki sumber','tI'],['F','Find','Cari liputan lain','tF'],['T','Trace','Telusuri klaim','tT']];
+const VNAME = { benar:'Benar', menyesatkan:'Menyesatkan', salah:'Salah' };
+let L = 1, cs, used, askedAI;
+const $ = id => document.getElementById(id);
+const hdr = Bina.header({ game:'g4', icon:'🕵️', title:'Detektif SIFT', count:4, current:() => L, onPick:start, onHelp:help });
+function help(){ Bina.info('Metode SIFT', `<p><b>S – Stop (berhenti):</b> tahan dulu sebelum percaya atau membagikan.</p><p><b>I – Investigate the source (selidiki sumber):</b> siapa pembuatnya dan apa kepentingannya?</p><p><b>F – Find better coverage (cari liputan lain):</b> apa kata sumber lain yang lebih tepercaya?</p><p><b>T – Trace claims (telusuri klaim):</b> lacak kutipan, angka, atau foto sampai ke sumber aslinya.</p><p style="margin-top:10px">Pilihan keputusan: <b>Benar</b>, <b>Menyesatkan</b> (ada yang benar tetapi dibengkokkan), atau <b>Salah</b>.</p>`); }
+function start(n){
+  L = n; cs = CASES[n-1]; used = []; askedAI = false;
+  $('story').innerHTML = `${Bina.bina}<div><h2>Level ${n}: ${cs.title}</h2><p>${cs.story}</p></div>`;
+  const p = cs.post;
+  $('post').innerHTML = `<div class="post"><div class="who"><span class="av">${p.av}</span><div><b>${p.name}</b><span class="tag-f">fiktif</span><small>${p.handle}</small></div></div><div class="body">${p.body}</div><div class="img">🖼 ${p.img}</div><div class="meta">${p.meta}</div></div>`;
+  $('finds').innerHTML = '<p class="hint">Gunakan alat SIFT di sebelah kanan. Temuan akan muncul di sini.</p>';
+  tools(); hdr.redraw();
+  document.querySelectorAll('.verdict button').forEach(b => b.onclick = () => verdict(b.dataset.v));
+}
+function tools(){
+  $('tools').innerHTML = TOOLS.map(([k, en, id, c]) => `<button class="tool ${c} ${used.includes(k) ? 'used' : ''}" data-k="${k}"><span class="L">${k}</span><span><b>${id}</b><small>${en}</small></span></button>`).join('') +
+    (cs.A ? `<button class="tool tA ${askedAI ? 'used' : ''}" data-k="A"><span class="L">💬</span><span><b>Tanya Asisten AI</b><small>“Apakah penemuan ini benar?”</small></span></button>` : '');
+  $('tools').querySelectorAll('.tool').forEach(b => b.onclick = () => use(b.dataset.k));
+}
+function use(k){
+  if (k === 'A') { if (askedAI) return; askedAI = true; add('Asisten AI menjawab', cs.A, true); tools(); return; }
+  if (used.includes(k)) return;
+  used.push(k); const t = TOOLS.find(x => x[0] === k); add(`${t[0]} · ${t[2]}`, cs[k]); tools();
+}
+function add(h, p, ai){
+  if ($('finds').querySelector('.hint')) $('finds').innerHTML = '';
+  const d = document.createElement('div'); d.className = 'find' + (ai ? ' ai' : ''); d.innerHTML = `<h4>${h}</h4><p>${p}</p>`; $('finds').appendChild(d); d.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+function verdict(v){
+  const ok = v === cs.answer, s = used.length;
+  let stars = ok ? (s >= 3 ? 3 : s === 2 ? 2 : 1) : 0;
+  if (ok && cs.needF && !used.includes('F')) stars = Math.min(stars, 2);
+  if (ok && cs.needT && !used.includes('T')) stars = Math.min(stars, 2);
+  if (stars) Bina.save('g4', L, stars);
+  const what = [`Keputusanmu: <b>${VNAME[v]}</b>. Jawaban yang tepat: <b>${VNAME[cs.answer]}</b>. ${cs.why}`];
+  const miss = TOOLS.filter(t => !used.includes(t[0])).map(t => t[2].toLowerCase());
+  what.push(used.length ? `Langkah yang kamu pakai: ${used.map(k => TOOLS.find(t => t[0] === k)[2].toLowerCase()).join(', ')}.${miss.length ? ` Yang belum dipakai: ${miss.join(', ')}.` : ' Semua langkah SIFT sudah dipakai, hebat!'}` : 'Kamu memutuskan tanpa memeriksa apa pun. Keputusan cepat seperti ini yang membuat hoaks mudah menyebar.');
+  if (cs.needF) what.push(used.includes('F') ? 'Kamu mencari liputan lain dan menemukan bukti yang melawan klaim. Ini melawan <b>bias konfirmasi</b>: kecenderungan hanya mencari bukti yang kita sukai.' : 'Kamu belum mencari liputan lain. Saat sebuah klaim terasa menyenangkan, carilah juga bukti yang melawannya.');
+  if (L === 4) what.push(askedAI ? (used.includes('T') ? 'Asisten AI menjawab dengan yakin dan memberi kutipan lengkap, tetapi penelusuranmu membuktikan kutipan itu dikarang. AI bisa <b>berhalusinasi</b>.' : 'Asisten AI memberi kutipan yang terdengar resmi. Tanpa menelusuri klaim, kamu tidak bisa tahu bahwa kutipan itu dikarang.') : 'Kamu tidak memakai Asisten AI. Itu boleh, tetapi coba lain kali: AI bisa membantu mencari, asalkan hasilnya tetap dicocokkan dengan sumber asli.');
+  Bina.result({ stars, title: ok ? (stars === 3 ? 'Detektif yang teliti!' : 'Keputusanmu tepat') : 'Keputusan belum tepat', subtitle:`Level ${L}: ${cs.title}`,
+    metrics:[[ok ? 'Tepat' : 'Belum tepat', 'keputusan'], [`${used.length} / 4`, 'langkah SIFT dipakai'], ...(cs.A ? [[askedAI ? 'Ya' : 'Tidak', 'bertanya ke Asisten AI']] : [])],
+    what,
+    ai: L === 4 ? 'Model bahasa bisa menulis kutipan, nama, dan halaman jurnal yang tampak nyata padahal tidak pernah ada. Pakai AI sebagai alat bantu mencari, bukan sumber yang dipercaya begitu saja. Selalu telusuri ke sumber aslinya.'
+      : 'AI kini bisa membuat artikel, foto, dan angka yang tampak meyakinkan dalam hitungan detik. Keterampilan memeriksa informasi menjadi makin penting. Metode SIFT dikembangkan Mike Caulfield dan dipakai dalam kurikulum literasi AI Common Sense.',
+    ct:['Dekomposisi','Evaluasi'], onRetry:() => start(L), next: stars && L < 4 ? () => start(L+1) : null });
+}
+start(1);
+</script>
+</body>
+</html>

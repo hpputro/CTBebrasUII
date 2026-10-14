@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neuron Kecil · Ekspedisi Bina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{--accent:#7C6BD6}
+  .board{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:18px;flex:1;min-height:0}
+  .netbox{display:flex;flex-direction:column;gap:10px;overflow:auto}
+  #net{width:100%;max-height:44vh}
+  .side{display:flex;flex-direction:column;gap:10px;overflow:auto}
+  table.tt{width:100%;border-collapse:collapse;font-size:.9em}
+  table.tt th,table.tt td{padding:6px 8px;text-align:center;border-bottom:2px solid var(--sky)}
+  table.tt th{color:var(--muted);font-size:.85em;line-height:1.1}
+  table.tt tr{cursor:pointer}
+  table.tt tr.sel td{background:#FFF4D9}
+  .one{color:var(--navy);font-weight:800}.zero{color:#B0B8C8}
+  .chartbox{background:var(--sky);border-radius:14px;padding:8px 10px}
+  @media (max-width:1000px){.board{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar"></div>
+  <div class="main">
+    <section class="story" id="story"></section>
+    <section class="board">
+      <div class="panel netbox"><svg id="net" viewBox="0 0 670 330" role="img" aria-label="Gambar neuron"></svg><div id="sliders"></div></div>
+      <div class="panel side" id="side"></div>
+    </section>
+  </div>
+</div>
+<script src="common.js"></script>
+<script>
+const LEVELS = [
+  { title:'Neuron “dan”', story:'Neuron ini memutuskan <b>pergi ke kantin</b>. Jawabannya “ya” hanya kalau kamu <b>lapar dan punya uang</b>. Geser bobot dan ambang sampai semua baris tabel cocok.',
+    inputs:['Lapar','Punya uang'], out:'Pergi ke kantin', f:x => x[0] && x[1], w:[0,0], t:3 },
+  { title:'Neuron “atau”', story:'Sekarang neuron memutuskan <b>membawa payung</b>: “ya” kalau langit <b>mendung atau hujan</b>. Bobotnya mirip level 1, tetapi ada yang perlu diubah. Apa?',
+    inputs:['Mendung','Hujan'], out:'Bawa payung', f:x => x[0] || x[1], w:[1,1], t:3 },
+  { title:'Bobot yang berbeda', story:'Boleh <b>main bola sore ini</b> kalau <b>tidak hujan</b>, dan PR sudah selesai atau teman datang. Hujan lebih penting daripada yang lain! Coba atur sendiri, lalu bandingkan dengan tombol <b>Belajar otomatis</b>.',
+    inputs:['Hujan','PR selesai','Teman datang'], out:'Main bola', f:x => !x[0] && (x[1] || x[2]), w:[0,0,0], t:1, auto:true },
+  { title:'Saklar tangga', story:'Lampu tangga menyala kalau saklar <b>atas atau bawah</b> ditekan, tetapi <b>tidak keduanya</b>. Coba buat satu neuron untuk ini. Kalau buntu, coba Belajar otomatis.',
+    inputs:['Saklar atas','Saklar bawah'], out:'Lampu menyala', f:x => (x[0] ^ x[1]) === 1, w:[0,0], t:1, auto:true, xor:true },
+];
+let L = 1, lv, w, th, sel, usedAuto, errHist, phase, autoRuns;
+const $ = id => document.getElementById(id);
+const hdr = Bina.header({ game:'g2', icon:'🧠', title:'Neuron Kecil', count:4, current:() => L, onPick:start, onHelp:help });
+function help(){ Bina.info('Cara bermain', `<p>Neuron menerima masukan bernilai 1 (ya) atau 0 (tidak). Setiap masukan dikalikan <b>bobot</b>, lalu semuanya dijumlahkan.</p><p style="margin-top:10px">Kalau jumlahnya <b>sama dengan atau lebih dari ambang</b>, neuron menjawab 1 (ya). Kalau kurang, neuron menjawab 0 (tidak).</p><p style="margin-top:10px">Bobot positif berarti “mendorong ke ya”, bobot negatif berarti “menarik ke tidak”. Ketuk baris tabel untuk melihat hitungannya di gambar.</p>`); }
+function rows(n){ const r = []; for (let i = 0; i < (1 << n); i++) r.push([...Array(n)].map((_, j) => (i >> (n - 1 - j)) & 1)); return r; }
+const fmt = v => (v > 0 ? '+' : '') + v;
+
+function start(n){
+  L = n; lv = LEVELS[n-1]; w = lv.w.slice(); th = lv.t; sel = rows(lv.inputs.length).length - 1; usedAuto = false; errHist = []; phase = 'A'; autoRuns = 0;
+  $('story').innerHTML = `${Bina.bina}<div><h2>Level ${n}: ${lv.title}</h2><p>${lv.story}</p></div>`;
+  hdr.redraw(); draw();
+}
+// jaringan dua lapis untuk level 4 fase B
+const HID = [{ name:'h1: atas ATAU bawah', w:[1,1], t:1 }, { name:'h2: TIDAK keduanya', w:[-1,-1], t:-1 }];
+function curInputs(x){ return phase === 'B' ? HID.map(h => (h.w[0]*x[0] + h.w[1]*x[1] >= h.t) ? 1 : 0) : x; }
+function sum(x){ const v = curInputs(x); return v.reduce((a, b, i) => a + b * w[i], 0); }
+function out(x){ return sum(x) >= th ? 1 : 0; }
+function correctCount(){ return rows(lv.inputs.length).filter(x => out(x) === (lv.f(x) ? 1 : 0)).length; }
+
+function draw(){ drawNet(); drawSliders(); drawSide(); }
+function drawNet(){
+  const R = rows(lv.inputs.length), x = R[sel], v = curInputs(x), s = sum(x), o = out(x);
+  const names = phase === 'B' ? HID.map(h => h.name) : lv.inputs;
+  const n = names.length, ys = names.map((_, i) => 165 + (i - (n - 1) / 2) * 105);
+  let g = '';
+  if (phase === 'B') {
+    // masukan asli di kiri
+    lv.inputs.forEach((nm, i) => { const y = 165 + (i - .5) * 120; g += `<circle cx="40" cy="${y}" r="24" fill="${x[i] ? '#1E2E5C' : '#E3E9F0'}"/><text x="40" y="${y+7}" text-anchor="middle" font-size="20" font-weight="800" fill="${x[i] ? '#fff' : '#56607C'}">${x[i]}</text><text x="40" y="${y+44}" text-anchor="middle" font-size="13" fill="#56607C">${nm}</text>`;
+      ys.forEach(yy => g += `<line x1="64" y1="${y}" x2="146" y2="${yy}" stroke="#C9D4DF" stroke-width="2"/>`); });
+  }
+  const ix = phase === 'B' ? 175 : 90;
+  names.forEach((nm, i) => {
+    const y = ys[i], wt = w[i], col = wt > 0 ? '#2F6FD0' : wt < 0 ? '#D9503C' : '#C9D4DF';
+    g += `<line x1="${ix+30}" y1="${y}" x2="370" y2="165" stroke="${col}" stroke-width="${2 + Math.abs(wt) * 2}" stroke-linecap="round"/>`;
+    g += `<rect x="${(ix+370)/2 - 30}" y="${(y+165)/2 - 16}" width="60" height="28" rx="14" fill="#fff" stroke="${col}" stroke-width="2"/><text x="${(ix+370)/2}" y="${(y+165)/2 + 4}" text-anchor="middle" font-size="16" font-weight="800" fill="${col === '#C9D4DF' ? '#56607C' : col}">${fmt(wt)}</text>`;
+    g += `<circle cx="${ix}" cy="${y}" r="30" fill="${v[i] ? '#1E2E5C' : '#E3E9F0'}"/><text x="${ix}" y="${y+8}" text-anchor="middle" font-size="24" font-weight="800" fill="${v[i] ? '#fff' : '#56607C'}">${v[i]}</text>`;
+    g += `<text x="${ix}" y="${y+50}" text-anchor="middle" font-size="${phase === 'B' ? 12 : 15}" font-weight="700" fill="#1E2E5C">${nm}</text>`;
+  });
+  g += `<circle cx="420" cy="165" r="58" fill="#7C6BD6"/><text x="420" y="150" text-anchor="middle" font-size="15" fill="#fff">jumlah</text><text x="420" y="180" text-anchor="middle" font-size="32" font-weight="800" fill="#fff">${s}</text><text x="420" y="246" text-anchor="middle" font-size="15" fill="#1E2E5C" font-weight="700">ambang ${th}</text>`;
+  g += `<line x1="478" y1="165" x2="540" y2="165" stroke="#1E2E5C" stroke-width="4"/><polygon points="540,155 556,165 540,175" fill="#1E2E5C"/>`;
+  g += `<rect x="560" y="125" width="76" height="80" rx="18" fill="${o ? '#3E9A4C' : '#D5DBE5'}"/><text x="598" y="178" text-anchor="middle" font-size="34" font-weight="800" fill="${o ? '#fff' : '#56607C'}">${o}</text><text x="598" y="228" text-anchor="middle" font-size="13" font-weight="700" fill="#1E2E5C">${lv.out}</text>`;
+  $('net').innerHTML = g;
+}
+function drawSliders(){
+  const names = phase === 'B' ? HID.map(h => 'Bobot ' + h.name.split(':')[0]) : lv.inputs.map(n => 'Bobot ' + n.toLowerCase());
+  $('sliders').innerHTML = names.map((nm, i) => `<div class="slider"><label for="w${i}">${nm}</label><input type="range" id="w${i}" min="-6" max="6" step="1" value="${w[i]}"><output>${fmt(w[i])}</output></div>`).join('') +
+    `<div class="slider"><label for="th">Ambang</label><input type="range" id="th" min="-4" max="8" step="1" value="${th}"><output>${th}</output></div>`;
+  names.forEach((_, i) => $('w' + i).oninput = e => { w[i] = +e.target.value; e.target.nextElementSibling.textContent = fmt(w[i]); drawNet(); drawSide(); });
+  $('th').oninput = e => { th = +e.target.value; e.target.nextElementSibling.textContent = th; drawNet(); drawSide(); };
+}
+function drawSide(){
+  const R = rows(lv.inputs.length), names = lv.inputs;
+  let h = `<h3>📋 Tabel keinginan</h3><table class="tt"><tr>${names.map(n => `<th>${n}</th>`).join('')}${phase === 'B' ? '<th>h1</th><th>h2</th>' : ''}<th>Jumlah</th><th>Neuron</th><th>Seharusnya</th><th></th></tr>`;
+  R.forEach((x, i) => {
+    const o = out(x), t = lv.f(x) ? 1 : 0, hv = curInputs(x);
+    h += `<tr class="${i === sel ? 'sel' : ''}" data-i="${i}">${x.map(v => `<td class="${v ? 'one' : 'zero'}">${v}</td>`).join('')}${phase === 'B' ? hv.map(v => `<td class="${v ? 'one' : 'zero'}">${v}</td>`).join('') : ''}<td>${sum(x)}</td><td class="${o ? 'one' : 'zero'}">${o}</td><td class="${t ? 'one' : 'zero'}">${t}</td><td class="${o === t ? 'ok' : 'no'}">${o === t ? '✓' : '✗'}</td></tr>`;
+  });
+  h += `</table><p class="pill" style="align-self:flex-start">${correctCount()} dari ${R.length} baris cocok</p>`;
+  if (lv.auto && phase === 'A') h += `<div class="chartbox" id="chart">${errHist.length ? Bina.lineChart([{ name:'baris salah', color:'#D9503C', data:errHist }], { ymin:0, ymax:R.length, xlabel:'putaran belajar', label:'grafik kesalahan' }) : '<p class="hint">Grafik kesalahan akan muncul saat Belajar otomatis berjalan.</p>'}</div>`;
+  h += `<div class="actions" style="justify-content:flex-start">
+    ${lv.auto && phase === 'A' ? '<button class="btn btn-soft" id="auto"><span class="icon">⚙️</span> Belajar otomatis</button>' : ''}
+    ${lv.xor && phase === 'A' && (autoRuns > 0) ? '<button class="btn btn-soft" id="layer"><span class="icon">➕</span> Tambah lapisan</button>' : ''}
+    <button class="btn btn-main" id="check"><span class="icon">✔</span> Periksa</button></div>`;
+  $('side').innerHTML = h;
+  $('side').querySelectorAll('tr[data-i]').forEach(tr => tr.onclick = () => { sel = +tr.dataset.i; drawNet(); drawSide(); });
+  if ($('auto')) $('auto').onclick = autoLearn;
+  if ($('layer')) $('layer').onclick = () => { phase = 'B'; w = [0,0]; th = 1; Bina.toast('Dua neuron tersembunyi ditambahkan. Atur neuron keluarannya.'); draw(); };
+  $('check').onclick = check;
+}
+function autoLearn(){
+  const R = rows(lv.inputs.length); usedAuto = true; autoRuns++; errHist = [];
+  let ep = 0; $('auto').disabled = true;
+  const tick = () => {
+    let errs = 0;
+    R.forEach(x => { const o = out(x), t = lv.f(x) ? 1 : 0, e = t - o; if (e) { errs++; x.forEach((v, i) => w[i] = Math.max(-6, Math.min(6, w[i] + e * v))); th = Math.max(-4, Math.min(8, th - e)); } });
+    errHist.push(R.filter(x => out(x) !== (lv.f(x) ? 1 : 0)).length); ep++;
+    drawNet(); drawSliders(); drawSide(); $('auto').disabled = true;
+    if (errHist[errHist.length-1] > 0 && ep < 16) setTimeout(tick, 350);
+    else { drawSide(); Bina.toast(errHist[errHist.length-1] === 0 ? `Neuron selesai belajar dalam ${ep} putaran.` : `Setelah ${ep} putaran, neuron masih salah.`); }
+  };
+  tick();
+}
+function check(){
+  const R = rows(lv.inputs.length), c = correctCount(), all = c === R.length;
+  const what = [];
+  let stars = 0;
+  if (all) stars = (L <= 2 && usedAuto) ? 2 : 3;
+  if (all) Bina.save('g2', L, stars);
+  const wd = (phase === 'B' ? HID.map(h => h.name.split(':')[0]) : lv.inputs).map((n, i) => `${n} ${fmt(w[i])}`).join(', ');
+  what.push(`Bobotmu: ${wd}; ambang ${th}. ${c} dari ${R.length} baris cocok.`);
+  if (L === 1 && all) what.push('Ambang yang tinggi membuat neuron baru menjawab “ya” kalau <b>kedua</b> masukan menyala. Satu masukan saja tidak cukup melewati ambang.');
+  if (L === 2 && all) what.push('Dibanding level 1, cukup <b>turunkan ambang</b>: sekarang satu masukan saja sudah cukup untuk menjawab “ya”.');
+  if (L === 3) {
+    if (all) what.push(`Bobot hujan ${fmt(w[0])} ${w[0] < 0 ? 'negatif dan besar, jadi hujan selalu menarik jawaban ke “tidak”' : 'belum negatif; coba bayangkan apa artinya'}. Bobot PR dan teman positif, jadi salah satunya cukup mendorong ke “ya”.`);
+    if (usedAuto) what.push('Saat Belajar otomatis berjalan, setiap kali neuron salah, bobot masukan yang menyala digeser sedikit ke arah jawaban yang benar. Grafik menunjukkan kesalahan berkurang sampai nol.');
+  }
+  if (L === 4 && phase === 'A') {
+    what.push('Tidak ada pengaturan bobot yang membuat <b>satu</b> neuron benar di keempat baris. Kalau kedua saklar ditekan, jumlahnya selalu paling besar, padahal jawabannya harus “tidak”.');
+    if (autoRuns) what.push('Belajar otomatis juga gagal: grafiknya naik-turun dan tidak pernah sampai nol. Coba tekan <b>Tambah lapisan</b>.');
+  }
+  if (L === 4 && phase === 'B') what.push(all ? 'Dua neuron tersembunyi memecah masalah: h1 memeriksa “salah satu ditekan”, h2 memeriksa “tidak keduanya”. Neuron keluaranmu cukup menjadi neuron “dan” seperti di level 1!' : 'Lihat kolom h1 dan h2. Kapan lampu harus menyala? Neuron keluaran perlu menjadi neuron “dan” untuk h1 dan h2.');
+  if (!all && !(L === 4 && phase === 'A')) what.push('Ketuk baris bertanda ✗ dan lihat jumlahnya di gambar. Perlu dinaikkan atau diturunkan agar melewati ambang?');
+  const title = all ? (L === 4 ? 'Lampu tangga berhasil!' : 'Neuronmu benar semua!') : (L === 4 && phase === 'A') ? 'Satu neuron tidak cukup' : 'Belum semua baris cocok';
+  Bina.result({ stars, title, subtitle:`Level ${L}: ${lv.title}${L === 4 ? (phase === 'B' ? ' (dua lapis)' : ' (satu neuron)') : ''}`,
+    metrics:[[`${c} / ${R.length}`, 'baris cocok'], [th, 'ambang'], [usedAuto ? 'Ya' : 'Tidak', 'memakai belajar otomatis']],
+    what,
+    ai: L === 4 ? 'Penemuan bahwa satu neuron tidak bisa menyelesaikan XOR pernah membuat penelitian AI melambat. Jalan keluarnya adalah <b>jaringan berlapis</b>. AI modern (deep learning) memakai jutaan sampai miliaran neuron seperti ini, tersusun dalam banyak lapisan.'
+      : L === 3 ? '“Belajar” bagi jaringan saraf berarti <b>menggeser bobot</b> sedikit demi sedikit setiap kali salah. Inilah yang dilakukan komputer berjam-jam saat melatih AI, hanya saja dengan bobot yang jauh lebih banyak.'
+      : 'Inilah <b>neuron buatan</b> (perseptron): menjumlahkan masukan berbobot lalu membandingkannya dengan ambang. Jaringan saraf dalam AI tersusun dari banyak neuron sederhana seperti ini.',
+    ct: L === 4 ? ['Dekomposisi','Abstraksi','Algoritma'] : ['Algoritma','Abstraksi','Evaluasi'],
+    next: all && L < 4 ? () => start(L+1) : null });
+}
+start(1);
+</script>
+</body>
+</html>

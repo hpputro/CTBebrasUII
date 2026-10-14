@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algoritma Beranda · Ekspedisi Bina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{--accent:#D9822B}
+  .board{display:grid;grid-template-columns:minmax(260px,0.8fr) minmax(0,1.6fr);grid-template-rows:minmax(0,1fr);gap:18px;flex:1;min-height:0}
+  .phone{background:#1E2E5C;border-radius:30px;padding:14px;display:flex;flex-direction:column;gap:10px;overflow:auto;color:#fff}
+  .phone h3{color:#fff;margin:0}
+  .feed{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .vid{border-radius:12px;aspect-ratio:16/10;display:grid;place-items:center;font-size:clamp(20px,2.4vw,34px)}
+  .users{display:flex;gap:6px}
+  .users button{flex:1;border:0;border-radius:12px;padding:6px;min-height:44px;font-weight:700;background:rgba(255,255,255,.12);color:#fff}
+  .users button.on{background:var(--gold);color:var(--navy)}
+  .ibar{display:grid;grid-template-columns:28px 1fr 40px;gap:6px;align-items:center;font-size:.8em}
+  .ibar .t{background:rgba(255,255,255,.15);border-radius:999px;height:12px;overflow:hidden}
+  .ibar .f{height:100%;border-radius:999px}
+  .right{display:flex;flex-direction:column;gap:10px;overflow:auto}
+  .charts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .cbox{background:var(--sky);border-radius:14px;padding:8px 10px}
+  .cbox h4{margin:0;color:var(--navy);font-size:.9em;display:flex;justify-content:space-between}
+  .targets{display:flex;gap:10px;flex-wrap:wrap}
+  .target{border-radius:999px;padding:4px 14px;font-weight:700;font-size:.85em;background:var(--sky);color:var(--navy)}
+  .target.ok{background:#DDF2E0;color:var(--leaf)}.target.no{background:#FBE0DB;color:var(--coral)}
+  .slider input:disabled{opacity:.35}
+  .dayrow{display:flex;align-items:center;gap:10px;font-size:.85em}
+  .dayrow input{flex:1;accent-color:var(--gold)}
+  @media (max-width:1100px){.board{grid-template-columns:1fr}.charts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar"></div>
+  <div class="main">
+    <section class="story" id="story"></section>
+    <section class="board">
+      <div class="phone" id="phone"></div>
+      <div class="panel right" id="right"></div>
+    </section>
+  </div>
+</div>
+<script src="common.js"></script>
+<script src="beranda_sim.js"></script>
+<script>
+const COLORS = ['#5B8DEF','#3E9A4C','#B05FD0','#E8A23A','#D9503C'];
+const LEVELS = [
+  { title:'Kejar waktu tonton', story:'Kamu adalah <b>algoritma beranda</b> aplikasi video. Atasanmu hanya ingin satu hal: Raka menonton selama mungkin. Jalankan 30 hari dan amati beranda Raka.', sliders:['A'], fixed:{A:10,N:0,S:0}, users:['raka'] },
+  { title:'Gelembung informasi', story:'Beranda Raka menyempit. Tambahkan dorongan <b>hal baru</b>. Target: waktu tonton tetap minimal 52 menit sehari, dan keragaman minimal 55%.', sliders:['A','N'], fixed:{S:0}, users:['raka'], goal:{ watch:52, div:55 } },
+  { title:'Peduli kesejahteraan', story:'Konten heboh membuat penonton betah, tetapi membuat mereka lelah dan cemas. Target: waktu tonton ≥ 52 menit, keragaman ≥ 50%, dan kesejahteraan ≥ 60.', sliders:['A','N','S'], users:['raka'], goal:{ watch:52, div:50, well:60 } },
+  { title:'Adil untuk semua', story:'Satu aturan algoritma dipakai untuk semua pengguna. Temukan pengaturan yang baik bagi <b>Raka, Sinta, dan Dimas</b> sekaligus: waktu tonton ≥ 45 menit, keragaman ≥ 50%, kesejahteraan ≥ 60.', sliders:['A','N','S'], users:['raka','sinta','dimas'], goal:{ watch:45, div:50, well:60 } },
+];
+const SL = { A:'Utamakan yang paling ditonton', N:'Tampilkan hal baru', S:'Kurangi konten heboh' };
+let L = 1, lv, set, res, viewU, day, runs, answered;
+const $ = id => document.getElementById(id);
+const hdr = Bina.header({ game:'g5', icon:'📲', title:'Algoritma Beranda', count:4, current:() => L, onPick:start, onHelp:help });
+function help(){ Bina.info('Cara bermain', `<p>Setiap hari, algoritma memilih video untuk beranda pengguna dari lima jenis: sains, olahraga, musik, gim, dan konten heboh.</p><p style="margin-top:10px"><b>Utamakan yang paling ditonton</b> = memilih jenis video yang diperkirakan paling lama ditonton. <b>Tampilkan hal baru</b> = memberi tempat bagi jenis yang jarang muncul. <b>Kurangi konten heboh</b> = menahan video sensasional.</p><p style="margin-top:10px">Minat pengguna ikut berubah: jenis yang sering muncul makin disukai. Jalankan 30 hari dan lihat grafiknya.</p>`); }
+function start(n){
+  L = n; lv = LEVELS[n-1]; set = Object.assign({ A:5, N:0, S:0 }, lv.fixed || {}); if (n >= 2) set.A = 8;
+  res = null; viewU = lv.users[0]; day = 0; runs = 0; answered = false;
+  $('story').innerHTML = `${Bina.bina}<div><h2>Level ${n}: ${lv.title}</h2><p>${lv.story}</p></div>`;
+  hdr.redraw(); phone(); right();
+}
+function phone(){
+  const u = USERS[viewU], r = res && res[viewU];
+  const share = r ? r.hist.share[day] : [0.2,0.2,0.2,0.2,0.2];
+  const slots = []; let acc = 0; const n = 8;
+  const counts = share.map(p => Math.floor(p * n)); let rest = n - counts.reduce((a, b) => a + b, 0);
+  share.map((p, i) => [p * n - counts[i], i]).sort((a, b) => b[0] - a[0]).slice(0, rest).forEach(([, i]) => counts[i]++);
+  counts.forEach((c, i) => { for (let k = 0; k < c; k++) slots.push(i); });
+  const interest = r ? (day === 29 ? r.I : null) : u.I;
+  $('phone').innerHTML = `${lv.users.length > 1 ? `<div class="users">${lv.users.map(x => `<button class="${x === viewU ? 'on' : ''}" data-u="${x}">${USERS[x].av} ${USERS[x].name}</button>`).join('')}</div>` : ''}
+    <h3>${u.av} Beranda ${u.name}</h3>
+    ${r ? `<div class="dayrow"><span>Hari ${day+1}</span><input type="range" min="0" max="29" value="${day}" id="day" aria-label="Pilih hari"></div>` : '<p style="font-size:.85em;opacity:.8">Beranda hari pertama</p>'}
+    <div class="feed">${slots.map(i => `<div class="vid" style="background:${COLORS[i]}" title="${CATS[i][1]}">${CATS[i][2]}</div>`).join('')}</div>
+    <p style="font-size:.85em;margin-top:4px">${interest ? (r ? 'Minat setelah 30 hari' : 'Minat awal') : 'Komposisi beranda'}</p>
+    ${(interest || share).map((v, i) => `<div class="ibar"><span>${CATS[i][2]}</span><div class="t"><div class="f" style="width:${Math.round(v*100)}%;background:${COLORS[i]}"></div></div><span>${Math.round(v*100)}%</span></div>`).join('')}`;
+  $('phone').querySelectorAll('.users button').forEach(b => b.onclick = () => { viewU = b.dataset.u; phone(); right(); });
+  const d = $('day'); if (d) d.oninput = e => { day = +e.target.value; phone(); };
+}
+function right(){
+  const r = res && res[viewU];
+  let h = `<h3>⚙️ Aturan algoritma</h3>` + ['A','N','S'].map(k => lv.sliders.includes(k) ? `<div class="slider"><label for="s${k}">${SL[k]}</label><input type="range" id="s${k}" min="0" max="10" step="1" value="${set[k]}" ${lv.fixed && lv.fixed[k] !== undefined ? 'disabled' : ''}><output>${set[k]}</output></div>` : '').join('');
+  h += `<div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="run"><span class="icon">▶</span> Jalankan 30 hari</button></div>`;
+  if (lv.goal) h += `<div class="targets" id="targets">${targets()}</div>`;
+  if (r) {
+    const ch = (data, color, name, ymax, unit) => `<div class="cbox"><h4><span>${name}</span><span>${Math.round(data[data.length-1])}${unit}</span></h4>${Bina.lineChart([{ name, color, data }], { ymin:0, ymax, xlabel:'hari', label:name, h:150 })}</div>`;
+    h += `<div class="charts">${ch(r.hist.watch, '#D9822B', 'Waktu tonton (menit/hari)', 100, ' m')}${ch(r.hist.div, '#5B8DEF', 'Keragaman beranda', 100, '%')}${ch(r.hist.well, '#3E9A4C', 'Kesejahteraan', 100, '')}</div>`;
+  } else h += `<p class="hint">Grafik waktu tonton, keragaman, dan kesejahteraan akan muncul setelah simulasi dijalankan.</p>`;
+  if (L === 1 && res && !answered) h += `<div><p class="big" style="font-weight:800;color:var(--navy);margin-top:6px">Apa yang terjadi pada beranda Raka setelah 30 hari?</p><div class="q-opts" id="q">${[['beragam','Makin beragam'],['heboh','Hampir semuanya konten heboh'],['sama','Tetap seperti hari pertama'],['sains','Hanya video sains']].map(([k, t]) => `<button data-k="${k}">${t}</button>`).join('')}</div></div>`;
+  $('right').innerHTML = h;
+  lv.sliders.forEach(k => { const s = $('s' + k); if (s && !s.disabled) s.oninput = e => { set[k] = +e.target.value; e.target.nextElementSibling.textContent = set[k]; }; });
+  $('run').onclick = run;
+  if ($('q')) $('q').querySelectorAll('button').forEach(b => b.onclick = () => { answered = true; report1(b.dataset.k); });
+}
+function meets(u){ const r = res[u], g = lv.goal; return { watch: r.watch >= g.watch, div: r.div >= g.div, well: g.well === undefined || r.well >= g.well }; }
+function targets(){
+  const g = lv.goal, r = res && res[viewU];
+  const t = (ok, txt) => `<span class="target ${r ? (ok ? 'ok' : 'no') : ''}">${r ? (ok ? '✓ ' : '✗ ') : ''}${txt}</span>`;
+  const m = r ? meets(viewU) : {};
+  return t(m.watch, `Waktu tonton ≥ ${g.watch} m${r ? ` (${Math.round(r.watch)})` : ''}`) + t(m.div, `Keragaman ≥ ${g.div}%${r ? ` (${Math.round(r.div)})` : ''}`) + (g.well !== undefined ? t(m.well, `Kesejahteraan ≥ ${g.well}${r ? ` (${Math.round(r.well)})` : ''}`) : '');
+}
+function run(){
+  res = {}; lv.users.forEach(u => res[u] = simulate(USERS[u], set.A, set.N, set.S)); runs++; day = 29;
+  phone(); right();
+  if (L > 1) setTimeout(report, 900);
+}
+function report1(k){
+  const r = res.raka, ok = k === 'heboh', stars = ok ? 3 : 0;
+  if (stars) Bina.save('g5', 1, stars);
+  Bina.result({ stars, title: ok ? 'Kamu melihat gelembungnya!' : 'Coba lihat lagi berandanya', subtitle:'Level 1: Kejar waktu tonton',
+    metrics:[[`${Math.round(r.watch)} m`, 'rata-rata waktu tonton'], [`${Math.round(r.div)}%`, 'keragaman (10 hari terakhir)'], [Math.round(r.well), 'kesejahteraan akhir']],
+    what:['Algoritma memilih video yang diperkirakan paling lama ditonton. Konten heboh paling “menempel”, jadi semakin sering dipilih.',
+      'Semakin sering muncul, Raka makin terbiasa dan minatnya pada konten heboh naik, sementara minat lain turun. Ini <b>lingkaran umpan balik</b>.',
+      `Hasilnya, waktu tonton tinggi (${Math.round(r.watch)} menit), tetapi beranda hampir hanya berisi satu jenis video dan kesejahteraan Raka turun ke ${Math.round(r.well)}.`],
+    ai:'Inilah <b>gelembung informasi</b> (<i>filter bubble</i>). Algoritma tidak jahat; ia hanya mengejar <b>tujuan</b> yang diberikan manusia, yaitu waktu tonton. Memilih tujuan adalah keputusan penting dalam merancang AI.',
+    ct:['Algoritma','Evaluasi'], onRetry:() => start(1), next: ok ? () => start(2) : null });
+}
+function report(){
+  const all = lv.users.map(u => ({ u, m: meets(u), r: res[u] }));
+  const ok = all.every(x => x.m.watch && x.m.div && x.m.well);
+  const partial = all.reduce((a, x) => a + [x.m.watch, x.m.div, x.m.well].filter(Boolean).length, 0), tot = all.length * 3;
+  const stars = ok ? (runs <= 4 ? 3 : 2) : partial >= tot - 1 ? 1 : 0;
+  if (stars) Bina.save('g5', L, stars);
+  const what = [`Pengaturanmu: utamakan yang ditonton ${set.A}, hal baru ${set.N}${lv.sliders.includes('S') ? `, kurangi konten heboh ${set.S}` : ''}. Percobaan ke-${runs}.`];
+  all.forEach(x => what.push(`${USERS[x.u].name}: waktu tonton ${Math.round(x.r.watch)} m, keragaman ${Math.round(x.r.div)}%, kesejahteraan ${Math.round(x.r.well)}. ${x.m.watch && x.m.div && x.m.well ? 'Semua target tercapai.' : `Belum tercapai: ${[!x.m.watch && 'waktu tonton', !x.m.div && 'keragaman', !x.m.well && 'kesejahteraan'].filter(Boolean).join(', ')}.`}`));
+  if (!ok) {
+    const r = all[0].r;
+    if (r.div < lv.goal.div) what.push('Keragaman rendah: naikkan “tampilkan hal baru” atau turunkan “utamakan yang ditonton”.');
+    if (r.watch < lv.goal.watch) what.push('Waktu tonton terlalu rendah: beranda menjadi kurang menarik. Naikkan sedikit “utamakan yang ditonton”.');
+    if (lv.goal.well !== undefined && r.well < lv.goal.well) what.push('Kesejahteraan rendah: konten heboh masih terlalu banyak. Naikkan “kurangi konten heboh”.');
+  } else what.push('Kamu menemukan keseimbangan: penonton tetap betah, tetapi berandanya beragam dan sehat.');
+  if (L === 4) what.push('Pengaturan yang pas untuk satu orang belum tentu adil untuk yang lain, karena minat awal mereka berbeda.');
+  Bina.result({ stars, title: ok ? 'Algoritma yang seimbang!' : 'Belum semua target tercapai', subtitle:`Level ${L}: ${lv.title}`,
+    metrics: all.map(x => [`${Math.round(x.r.div)}%`, `keragaman ${USERS[x.u].name}`]).concat([[runs, 'percobaan']]),
+    what,
+    ai: L === 4 ? 'Perusahaan teknologi harus memutuskan aturan yang dipakai jutaan orang sekaligus. Menimbang keadilan bagi pengguna yang berbeda adalah bagian dari <b>etika AI</b>.'
+      : 'Sistem rekomendasi sungguhan menimbang banyak tujuan sekaligus. Menambahkan keragaman dan kesejahteraan ke dalam tujuan algoritma adalah salah satu cara membuat AI lebih bertanggung jawab.',
+    ct:['Algoritma','Evaluasi','Abstraksi'], onRetry:() => {}, next: ok && L < 4 ? () => start(L+1) : null });
+}
+start(1);
+</script>
+</body>
+</html>

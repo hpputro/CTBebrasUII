@@ -2,17 +2,1017 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SMA · CT Bebras UII</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Observatorium Bina · Computational Thinking dan AI untuk SMA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../sd/common.css">
+<style>
+/* Petualangan Bina — gaya bersama */
+:root{
+  --navy:#1E2E5C; --navy-2:#2B3F78; --gold:#E8B23A; --gold-d:#8A6300;
+  --river:#3FA7B5; --leaf:#3E9A4C; --coral:#D9503C; --wood:#A8692F;
+  --sky:#EAF4F7; --paper:#FFFFFF; --ink:#1C2440; --muted:#56607C; --line:#D5E0E8;
+  --accent:#E8892E; --accent-soft:#FDEBD8;
+  --r-lg:22px; --r-md:14px; --r-sm:10px;
+  --fs:clamp(17px,1.25vw + 6px,24px);
+  --font:"Baloo 2","Trebuchet MS","Segoe UI",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:var(--font);font-size:var(--fs);color:var(--ink);background:var(--sky);line-height:1.35;overflow:hidden}
+button{font-family:inherit;font-size:inherit;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:4px solid var(--gold);outline-offset:3px}
+h1,h2,h3,p{margin:0}
+
+/* kerangka halaman game */
+.app{height:100vh;display:grid;grid-template-rows:auto 1fr}
+.topbar{display:flex;align-items:center;gap:16px;padding:12px 24px;background:var(--navy);color:#fff}
+.topbar .title{font-weight:800;font-size:1.25em;display:flex;align-items:center;gap:12px;white-space:nowrap}
+.topbar .title .badge{width:44px;height:44px;border-radius:50%;background:var(--accent);display:grid;place-items:center;font-size:1.1em}
+.topbar .spacer{flex:1}
+.btn{border:0;border-radius:999px;padding:10px 22px;min-height:52px;font-weight:700;display:inline-flex;align-items:center;gap:10px;transition:transform .08s}
+.btn:active{transform:scale(.97)}
+.btn-ghost{background:rgba(255,255,255,.12);color:#fff}
+.btn-ghost:hover{background:rgba(255,255,255,.22)}
+.btn-main{background:var(--gold);color:var(--navy);box-shadow:0 4px 0 #B88412}
+.btn-main:hover{filter:brightness(1.05)}
+.btn-main:disabled{background:#D9DEE6;color:#7C8599;box-shadow:none;cursor:not-allowed}
+.btn-soft{background:var(--paper);color:var(--navy);border:2px solid var(--line)}
+.btn-soft:hover{border-color:var(--navy)}
+.icon{font-size:1.15em;line-height:1}
+
+/* pilihan level */
+.levels{display:flex;gap:8px}
+.lvl{min-width:84px;min-height:52px;border-radius:14px;border:0;background:rgba(255,255,255,.12);color:#fff;font-weight:700;padding:4px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
+.lvl small{font-size:.62em;letter-spacing:1px;color:var(--gold)}
+.lvl.on{background:var(--gold);color:var(--navy)}
+.lvl.on small{color:var(--navy)}
+.lvl.locked{opacity:.45;cursor:not-allowed}
+
+/* isi */
+.main{overflow:auto;padding:20px 28px 28px;display:flex;flex-direction:column;gap:18px}
+.story{display:flex;gap:18px;align-items:center;background:var(--paper);border-radius:var(--r-lg);padding:14px 22px;border:2px solid var(--line)}
+.story .bina{flex:0 0 auto;width:72px;height:72px}
+.story h2{font-size:1.2em;color:var(--navy);line-height:1.1}
+.story p{color:var(--muted)}
+.panel{background:var(--paper);border-radius:var(--r-lg);padding:18px 20px;border:2px solid var(--line);min-width:0}
+.panel h3{font-size:1.05em;color:var(--navy);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.hint{color:var(--muted);font-size:.85em}
+.actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+/* modal hasil */
+.modal{position:fixed;inset:0;background:rgba(18,26,56,.55);display:none;align-items:center;justify-content:center;padding:24px;z-index:50}
+.modal.show{display:flex}
+.sheet{background:var(--paper);border-radius:28px;max-width:980px;width:100%;max-height:92vh;overflow:auto;padding:28px 34px;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.sheet .head{display:flex;align-items:center;gap:20px;margin-bottom:14px}
+.stars{font-size:2.2em;letter-spacing:4px;color:var(--gold);line-height:1}
+.stars .off{color:#D9DEE6}
+.sheet h2{font-size:1.6em;color:var(--navy);line-height:1.1}
+.sheet .sub{color:var(--muted)}
+.metrics{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}
+.metric{background:var(--sky);border-radius:var(--r-md);padding:10px 18px;min-width:150px}
+.metric b{display:block;font-size:1.6em;color:var(--navy);line-height:1.1}
+.metric span{color:var(--muted);font-size:.85em}
+.explain{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;margin-top:8px}
+.explain .box{border-radius:var(--r-md);padding:16px 18px;background:var(--sky)}
+.explain .box.ai{background:#FFF4D9}
+.explain h3{font-size:1.05em;color:var(--navy);margin-bottom:8px}
+.explain ul{margin:0;padding-left:1.1em}
+.explain li{margin:4px 0}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chip{background:var(--navy);color:#fff;border-radius:999px;padding:4px 14px;font-size:.8em;font-weight:700}
+.sheet .actions{margin-top:20px}
+.detail{margin-top:12px;width:100%;border-collapse:collapse;font-size:.9em}
+.detail td,.detail th{padding:8px 10px;border-bottom:2px solid var(--sky);text-align:left;vertical-align:middle}
+.detail th{color:var(--muted);font-weight:700}
+.ok{color:var(--leaf);font-weight:800}
+.no{color:var(--coral);font-weight:800}
+
+/* toast kecil */
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(140%);background:var(--navy);color:#fff;padding:12px 24px;border-radius:999px;font-weight:700;transition:transform .25s;z-index:60;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+@media (max-width:900px){
+  .explain{grid-template-columns:1fr}
+  .topbar{flex-wrap:wrap;padding:10px 14px}
+  .main{padding:14px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+@media (max-height:800px){.main{padding-top:12px;gap:12px}.story{padding:8px 16px}.story .bina{width:52px;height:52px}.topbar{padding:8px 20px}.btn{min-height:46px;padding:8px 18px}.lvl{min-height:46px}}
+
+/* tambahan Ekspedisi Bina (SMP) */
+:root{--plum:#5B4B9A;--teal:#1F8A8A}
+.seg{display:inline-flex;background:var(--sky);border-radius:999px;padding:4px;gap:4px}
+.seg button{border:0;border-radius:999px;padding:6px 16px;min-height:44px;font-weight:700;background:transparent;color:var(--navy)}
+.seg button.on{background:var(--navy);color:#fff}
+.slider{display:grid;grid-template-columns:minmax(120px,1fr) 2fr 56px;align-items:center;gap:12px;margin:8px 0}
+.slider label{font-weight:700;color:var(--navy);line-height:1.15}
+.slider input{width:100%;accent-color:var(--navy);height:28px}
+.slider output{font-weight:800;color:var(--navy);text-align:right}
+.chart{width:100%;height:auto;display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8em;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:6px;border-radius:3px;margin-right:6px;vertical-align:middle}
+.q-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.q-opts button{border:2px solid var(--line);background:#fff;border-radius:14px;padding:10px 14px;font-weight:700;text-align:left;min-height:56px}
+.q-opts button:hover:not(:disabled){border-color:var(--navy)}
+.q-opts button.right{background:#DDF2E0;border-color:#9BD3A0}
+.q-opts button.wrong{background:#FBE0DB;border-color:#EFA79A}
+.pill{display:inline-block;background:var(--sky);border-radius:999px;padding:3px 12px;font-weight:700;font-size:.82em;color:var(--navy)}
+
+/* Observatorium Bina (SMA) */
+.app{height:100vh}
+#home{min-height:100vh;display:grid;grid-template-rows:auto 1fr auto;background:radial-gradient(ellipse at 70% 10%,#33478A 0%,#1E2E5C 45%,#141F42 100%);color:#fff;overflow:hidden}
+#home .hero{display:flex;align-items:center;gap:22px;padding:24px 40px 0}
+#home .hero .bina{width:88px;height:88px}
+#home h1{font-size:2.4em;line-height:1;font-weight:800;color:#fff}
+#home .hero p{color:#C7D0E8;margin-top:6px}
+#home .spacer{flex:1}
+#home .tools{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.sky{position:relative;margin:0 40px;min-height:0}
+.sky svg.lines{position:absolute;inset:0;width:100%;height:100%}
+.station{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:8px;text-decoration:none;color:var(--ink);width:min(19vw,240px)}
+.station .disc{width:clamp(70px,7vw,100px);height:clamp(70px,7vw,100px);border-radius:50%;display:grid;place-items:center;font-size:clamp(32px,3.4vw,48px);border:5px solid var(--gold);box-shadow:0 0 0 8px rgba(232,178,58,.18);position:relative;transition:transform .15s}
+.station:hover .disc,.station:focus-visible .disc{transform:scale(1.07)}
+.station .num{position:absolute;top:-8px;left:-8px;background:var(--gold);color:var(--navy);border-radius:999px;font-weight:800;font-size:.5em;padding:1px 9px;line-height:1.5}
+.station .card{background:#fff;border-radius:16px;padding:8px 14px;text-align:center;width:100%;box-shadow:0 6px 0 rgba(0,0,0,.18)}
+.station .card b{display:block;color:var(--navy);line-height:1.1}
+.station .card span{display:block;color:var(--muted);font-size:.8em;line-height:1.2}
+.station .card .st{color:var(--gold-d);font-weight:800;margin-top:2px}
+#home .foot{display:flex;justify-content:space-between;align-items:center;padding:10px 40px 18px;color:#C7D0E8;font-size:.85em;gap:16px;flex-wrap:wrap}
+#home .foot label{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700;color:#fff}
+#home .foot input{width:24px;height:24px;accent-color:var(--gold)}
+.btn-glass{background:rgba(255,255,255,.14);color:#fff;border:2px solid rgba(255,255,255,.25)}
+.board{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:18px;flex:1;min-height:0}
+.col{display:flex;flex-direction:column;gap:10px;overflow:auto;min-height:0}
+.plot{width:100%;height:100%;max-height:100%}
+.metricrow{display:flex;gap:10px;flex-wrap:wrap}
+.metricrow .metric{min-width:120px;padding:8px 14px}
+.metricrow .metric b{font-size:1.3em}
+.goalbar{display:flex;gap:8px;flex-wrap:wrap}
+.goal{border-radius:999px;padding:4px 14px;font-weight:700;font-size:.85em;background:var(--sky);color:var(--navy)}
+.goal.ok{background:#DDF2E0;color:var(--leaf)}.goal.no{background:#FBE0DB;color:var(--coral)}
+.cm{border-collapse:collapse;font-size:.92em}
+.cm td,.cm th{padding:8px 12px;text-align:center;border:2px solid var(--sky)}
+.cm th{color:var(--muted);font-size:.85em}
+.cm .tp{background:#DDF2E0;color:var(--leaf);font-weight:800}.cm .tn{background:#E8F0FB;color:var(--navy);font-weight:800}
+.cm .fp{background:#FFF0D6;color:#9A5B00;font-weight:800}.cm .fn{background:#FBE0DB;color:var(--coral);font-weight:800}
+.guide .main{max-width:1180px;margin:0 auto;width:100%}
+@media (max-width:1000px){.board{grid-template-columns:1fr}.sky svg.lines{display:none}.sky{display:grid;grid-template-columns:1fr 1fr;gap:14px;overflow:auto;margin:0 16px}.station{position:relative;transform:none;left:auto!important;top:auto!important;width:auto}}
+.thumbs{display:flex;flex-direction:column;gap:6px}
+.thumb{display:flex;align-items:center;gap:12px;border:2px solid var(--line);background:#fff;border-radius:12px;padding:6px 10px;text-align:left;font-size:.9em}
+.thumb.on{border-color:var(--navy);background:#FFF8E6}
+.big{font-size:1.15em}
+
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+a.btn,a.station{text-decoration:none}
+</style>
 </head>
-<body style="display:grid;place-items:center;text-align:center;padding:24px">
-<div class="panel" style="max-width:520px">
-  <h2 style="color:var(--navy);font-size:1.6em">Jenjang SMA</h2>
-  <p style="color:var(--muted);margin:8px 0 18px">Permainan untuk jenjang SMA sedang disiapkan.</p>
-  <a class="btn btn-main" href="../" style="text-decoration:none">← Kembali</a>
-</div>
+<body>
+<div id="root"></div>
+<script>
+/* ===== Observatorium Bina: inti bersama ===== */
+const OB = (() => {
+  const KEY = 'observatorium-bina-v1';
+  let state = { progress: {}, unlockAll: false };
+  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s) state = Object.assign(state, s); } catch (e) {}
+  const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+  const stars = (g, l) => ((state.progress[g] || {})[l]) || 0;
+  const unlocked = (g, l) => l === 1 || state.unlockAll || stars(g, l - 1) > 0;
+  function save(g, l, s) { const p = state.progress[g] = state.progress[g] || {}; if (s > (p[l] || 0)) { p[l] = s; persist(); } }
+  function home() { location.hash = '#peta'; }
+  function fullscreen() {
+    const d = document;
+    if (!d.fullscreenElement) {
+      const el = d.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (!req) return toast('Peramban ini tidak mendukung layar penuh.');
+      try { const p = req.call(el); if (p && p.catch) p.catch(() => toast('Layar penuh diblokir di tampilan ini. Buka halaman di tab baru, lalu coba lagi.')); }
+      catch (e) { toast('Layar penuh diblokir di tampilan ini. Buka halaman di tab baru, lalu coba lagi.'); }
+    } else (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+  }
+  function toast(msg) {
+    let t = document.querySelector('.toast');
+    if (!t) { t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+    t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+  function header(root, opts) {
+    const bar = root.querySelector('.topbar');
+    bar.innerHTML = `<button class="btn btn-ghost" data-a="home" aria-label="Kembali ke peta"><span class="icon">🔭</span> Peta</button>
+      <div class="title"><span class="badge" aria-hidden="true" style="background:${opts.color}">${opts.icon}</span>${opts.title}</div><div class="spacer"></div>
+      <div class="levels" role="tablist" aria-label="Pilih level"></div>
+      <button class="btn btn-ghost" data-a="help" aria-label="Cara bermain"><span class="icon">❔</span></button>
+      <button class="btn btn-ghost" data-a="full" aria-label="Layar penuh"><span class="icon">⛶</span></button>`;
+    bar.querySelector('[data-a=home]').onclick = home;
+    bar.querySelector('[data-a=full]').onclick = fullscreen;
+    bar.querySelector('[data-a=help]').onclick = opts.onHelp;
+    const box = bar.querySelector('.levels');
+    const draw = () => {
+      box.innerHTML = '';
+      for (let i = 1; i <= 4; i++) {
+        const s = stars(opts.game, i), un = unlocked(opts.game, i), b = document.createElement('button');
+        b.className = 'lvl' + (i === opts.current() ? ' on' : '') + (un ? '' : ' locked');
+        b.innerHTML = `Level ${i}<small>${un ? '★'.repeat(s) + '☆'.repeat(3 - s) : '🔒'}</small>`;
+        b.setAttribute('aria-label', `Level ${i}${un ? `, ${s} bintang` : ', terkunci'}`);
+        b.onclick = () => { if (un) opts.onPick(i); else toast('Selesaikan level sebelumnya dulu.'); };
+        box.appendChild(b);
+      }
+    };
+    draw(); return { redraw: draw };
+  }
+  function modal(id) { let m = document.getElementById(id); if (!m) { m = document.createElement('div'); m.id = id; m.className = 'modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); document.body.appendChild(m); } return m; }
+  function result(o) {
+    const m = modal('resultModal'), st = o.stars || 0;
+    m.innerHTML = `<div class="sheet"><div class="head"><div class="stars" aria-label="${st} bintang">${[1,2,3].map(i => `<span class="${i <= st ? '' : 'off'}">★</span>`).join('')}</div>
+      <div><h2>${o.title}</h2><p class="sub">${o.subtitle || ''}</p></div></div>
+      ${o.metrics ? `<div class="metrics">${o.metrics.map(x => `<div class="metric"><b>${x[0]}</b><span>${x[1]}</span></div>`).join('')}</div>` : ''}
+      ${o.detail || ''}
+      <div class="explain"><div class="box"><h3>Apa yang terjadi?</h3><ul>${o.what.map(x => `<li>${x}</li>`).join('')}</ul></div>
+      <div class="box ai"><h3>Hubungannya dengan AI</h3><p>${o.ai}</p><div class="chips">${(o.ct || []).map(c => `<span class="chip">${c}</span>`).join('')}</div></div></div>
+      <div class="actions"><button class="btn btn-soft" data-r="retry"><span class="icon">↻</span> Coba lagi</button>
+      ${o.next ? `<button class="btn btn-main" data-r="next">Level berikutnya</button>` : `<button class="btn btn-main" data-r="home">Kembali ke peta</button>`}</div></div>`;
+    m.classList.add('show');
+    const close = () => m.classList.remove('show');
+    m.querySelector('[data-r=retry]').onclick = () => { close(); o.onRetry && o.onRetry(); };
+    const n = m.querySelector('[data-r=next]'); if (n) n.onclick = () => { close(); o.next(); };
+    const h = m.querySelector('[data-r=home]'); if (h) h.onclick = () => { close(); home(); };
+    (n || h).focus({ preventScroll: true }); m.querySelector('.sheet').scrollTop = 0;
+  }
+  function info(title, html) {
+    const m = modal('infoModal');
+    m.innerHTML = `<div class="sheet"><h2 style="margin-bottom:12px">${title}</h2>${html}<div class="actions"><button class="btn btn-main" data-i="ok">Mengerti, ayo mulai</button></div></div>`;
+    m.classList.add('show'); m.querySelector('[data-i=ok]').onclick = () => m.classList.remove('show'); m.querySelector('[data-i=ok]').focus();
+  }
+  function lineChart(series, opts = {}) {
+    const W = opts.w || 520, H = opts.h || 200, P = 40;
+    const all = series.flatMap(s => s.data.filter(v => isFinite(v)));
+    const ymin = opts.ymin ?? Math.min(0, ...all), ymax = opts.ymax ?? Math.max(1, ...all);
+    const n = opts.n || Math.max(...series.map(s => s.data.length));
+    const x = i => P + (W - P - 10) * (n <= 1 ? 0 : i / (n - 1));
+    const y = v => { const t = (Math.min(ymax, Math.max(ymin, v)) - ymin) / ((ymax - ymin) || 1); return H - 24 - (H - 34) * t; };
+    let g = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.label || 'grafik'}">`;
+    [0, 0.5, 1].forEach(t => { const v = ymin + (ymax - ymin) * t; g += `<line x1="${P}" x2="${W - 10}" y1="${y(v)}" y2="${y(v)}" stroke="#E3E9F0"/><text x="${P - 6}" y="${y(v) + 4}" font-size="12" text-anchor="end" fill="#56607C">${opts.fmt ? opts.fmt(v) : Math.round(v)}</text>`; });
+    if (opts.xticks) opts.xticks.forEach((t, i) => g += `<text x="${x(i)}" y="${H - 8}" font-size="12" text-anchor="middle" fill="#56607C">${t}</text>`);
+    else if (opts.xlabel) g += `<text x="${W / 2}" y="${H - 6}" font-size="12" text-anchor="middle" fill="#56607C">${opts.xlabel}</text>`;
+    if (opts.mark !== undefined) g += `<line x1="${x(opts.mark)}" x2="${x(opts.mark)}" y1="10" y2="${H - 24}" stroke="#E8B23A" stroke-width="3" stroke-dasharray="5 4"/>`;
+    series.forEach(s => { const pts = s.data.map((v, i) => isFinite(v) ? `${x(i).toFixed(1)},${y(v).toFixed(1)}` : null).filter(Boolean); if (pts.length) g += `<polyline fill="none" stroke="${s.color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${pts.join(' ')}"/>` + (s.dots ? s.data.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="${s.color}"/>`).join('') : ''); });
+    return g + '</svg>' + (series.length > 1 || opts.legend ? `<div class="legend">${series.map(s => `<span><i style="background:${s.color}"></i>${s.name}</span>`).join('')}</div>` : '');
+  }
+  const rng = seed => { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => (s = s * 16807 % 2147483647) / 2147483647; };
+  const bina = `<svg class="bina" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="44" r="30" fill="#A8692F"/><circle cx="18" cy="20" r="8" fill="#A8692F"/><circle cx="62" cy="20" r="8" fill="#A8692F"/><circle cx="18" cy="20" r="4" fill="#7A4A1E"/><circle cx="62" cy="20" r="4" fill="#7A4A1E"/><ellipse cx="40" cy="54" rx="17" ry="13" fill="#E8C49A"/><circle cx="29" cy="38" r="7" fill="#fff" stroke="#1E2E5C" stroke-width="2.5"/><circle cx="51" cy="38" r="7" fill="#fff" stroke="#1E2E5C" stroke-width="2.5"/><line x1="36" y1="38" x2="44" y2="38" stroke="#1E2E5C" stroke-width="2.5"/><circle cx="30" cy="39" r="2.6" fill="#1E2E5C"/><circle cx="52" cy="39" r="2.6" fill="#1E2E5C"/><ellipse cx="40" cy="49" rx="6" ry="4.5" fill="#3B2410"/><rect x="35" y="56" width="4.5" height="7" rx="1" fill="#fff"/><rect x="40.5" y="56" width="4.5" height="7" rx="1" fill="#fff"/></svg>`;
+  function frame(root, game, opts) {
+    root.innerHTML = `<div class="app"><div class="topbar"></div><div class="main"><section class="story"></section><section class="board"></section></div></div>`;
+    return header(root, Object.assign({ game }, opts));
+  }
+  function story(root, n, t, s) { root.querySelector('.story').innerHTML = `${bina}<div><h2>Level ${n}: ${t}</h2><p>${s}</p></div>`; }
+  return { state, persist, stars, unlocked, save, home, fullscreen, toast, header, result, info, lineChart, rng, bina, frame, story };
+})();
+const GAMES = [];
+
+/* ===== Misi 1: Garis Terbaik ===== */
+GAMES.push((() => {
+const G1X = [0.5,1.2,1.8,2.5,3.1,3.9,4.4,5.2,6.0,6.6,7.3,8.1,8.8,9.5];
+const G1N = [-4,6,-3,2,-6,5,1,-2,7,-5,3,-1,4,-3];
+const G1Y = G1X.map((x,i)=>Math.round((6*x+35+G1N[i])*10)/10);
+const XC = 5;
+function mse(m,c){ return G1X.reduce((a,x,i)=>a+(m*(x-XC)+c-G1Y[i])**2,0)/G1X.length; }
+function ols(){ const n=G1X.length, mx=G1X.reduce((a,b)=>a+b)/n, my=G1Y.reduce((a,b)=>a+b)/n; let sxy=0,sxx=0; G1X.forEach((x,i)=>{sxy+=(x-mx)*(G1Y[i]-my);sxx+=(x-mx)**2}); const m=sxy/sxx; return {m,c:my+m*(XC-mx)}; }
+function gdStep(m,c,lr){ let dm=0,dc=0; G1X.forEach((x,i)=>{const e=m*(x-XC)+c-G1Y[i];dm+=2*e*(x-XC);dc+=2*e}); dm/=G1X.length; dc/=G1X.length; return [m-lr*dm,c-lr*dc]; }
+function gd(lr,steps,m=0,c=20){ const path=[[m,c,mse(m,c)]]; for(let s=0;s<steps;s++){ [m,c]=gdStep(m,c,lr); path.push([m,c,mse(m,c)]); if(!isFinite(m)||Math.abs(m)>1e6)break;} return path; }
+
+const PTR = [[0.6,62],[1.7,71],[3.0,77],[4.1,83],[5.6,78],[6.8,76],[8.1,66],[9.4,52]];
+const PTE = [[1.1,63],[2.3,77],[3.6,77],[4.8,78],[6.1,82],[7.4,70],[8.7,60],[9.8,49]];
+function solve(A,b){ const n=b.length; A=A.map((r,i)=>r.concat([b[i]])); for(let i=0;i<n;i++){ let p=i; for(let r=i+1;r<n;r++) if(Math.abs(A[r][i])>Math.abs(A[p][i])) p=r; [A[i],A[p]]=[A[p],A[i]]; for(let r=0;r<n;r++){ if(r===i) continue; const f=A[r][i]/A[i][i]; for(let c=i;c<=n;c++) A[r][c]-=f*A[i][c]; } } return A.map((r,i)=>r[n]/r[i]); }
+function polyFit(pts,deg,lam=1e-6){ const n=deg+1, X=pts.map(([x])=>{const t=(x-5)/5; return [...Array(n)].map((_,k)=>t**k);}); const A=[...Array(n)].map((_,i)=>[...Array(n)].map((_,j)=>X.reduce((a,r)=>a+r[i]*r[j],0)+(i===j?lam:0))); const b=[...Array(n)].map((_,i)=>X.reduce((a,r,k)=>a+r[i]*pts[k][1],0)); return solve(A,b); }
+function polyEval(w,x){ const t=(x-5)/5; return w.reduce((a,c,k)=>a+c*t**k,0); }
+function polyMse(w,pts){ return pts.reduce((a,[x,y])=>a+(polyEval(w,x)-y)**2,0)/pts.length; }
+
+const OPT = ols(), BEST = mse(OPT.m, OPT.c);
+const PW = { ...(() => { const r = []; for (let d = 1; d <= 7; d++) { const w = polyFit(PTR, d); r.push({ d, w, tr: polyMse(w, PTR), te: polyMse(w, PTE) }); } return { list: r }; })() };
+const TEMIN = Math.min(...PW.list.map(p => p.te));
+const INFO = [
+  { t:'Tarik garis terbaik', s:'Data ini adalah jam belajar mandiri per minggu dan nilai ujian 14 siswa (fiktif). Geser <b>kemiringan</b> dan <b>tinggi garis</b> agar garis sedekat mungkin dengan semua titik. Ukurannya adalah <b>rata-rata kuadrat galat</b> (MSE).' },
+  { t:'Peta kesalahan', s:'Setiap titik di peta kanan adalah satu pasangan kemiringan dan tinggi garis. Warna gelap berarti galatnya kecil. Ketuk peta untuk mencoba pasangan, temukan lembah terdalam dengan sesedikit mungkin percobaan.' },
+  { t:'Menuruni lembah', s:'Mesin tidak menebak acak. Ia mengikuti arah turunan (gradien) ke bawah lembah. Pilih <b>laju belajar</b> (<i>learning rate</i>), lalu jalankan langkah demi langkah. Target: galat ≤ 1,05 × minimum dalam paling banyak 30 langkah.' },
+  { t:'Terlalu pas', s:'Data baru: suhu harian dan hasil panen (fiktif). Model dilatih dengan titik biru, lalu diuji dengan titik oranye yang belum pernah dilihatnya. Pilih <b>derajat polinomial</b> yang paling baik menebak data uji.' },
+];
+let L = 1, root, hdr, m, c, probes, gdState, deg, showTest;
+const X0 = 70, Y0 = 20, PWD = 540, PHT = 360;
+const sx = x => X0 + x / 10 * PWD, sy = (y, lo = 20, hi = 100) => Y0 + PHT - (y - lo) / (hi - lo) * PHT;
+function axes(lo, hi, xl, yl){
+  let g = `<rect x="${X0}" y="${Y0}" width="${PWD}" height="${PHT}" fill="#F7FAFC" stroke="#C9D4DF" stroke-width="2"/>`;
+  for (let t = 0; t <= 10; t += 2) g += `<text x="${sx(t)}" y="${Y0 + PHT + 22}" font-size="15" text-anchor="middle" fill="#56607C">${t}</text>`;
+  for (let k = 0; k <= 4; k++) { const v = lo + (hi - lo) * k / 4; g += `<text x="${X0 - 8}" y="${sy(v, lo, hi) + 5}" font-size="15" text-anchor="end" fill="#56607C">${Math.round(v)}</text>`; }
+  g += `<text x="${X0 + PWD / 2}" y="${Y0 + PHT + 44}" font-size="16" font-weight="700" text-anchor="middle" fill="#1E2E5C">${xl}</text><text x="18" y="${Y0 + PHT / 2}" font-size="16" font-weight="700" text-anchor="middle" fill="#1E2E5C" transform="rotate(-90 18 ${Y0 + PHT / 2})">${yl}</text>`;
+  return g;
+}
+function plotLine(){
+  let g = axes(20, 100, 'Jam belajar per minggu', 'Nilai ujian');
+  const yl = x => m * (x - XC) + c;
+  G1X.forEach((x, i) => { g += `<line x1="${sx(x)}" y1="${sy(G1Y[i])}" x2="${sx(x)}" y2="${sy(yl(x))}" stroke="#D9503C" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>`; });
+  g += `<line x1="${sx(0)}" y1="${sy(yl(0))}" x2="${sx(10)}" y2="${sy(yl(10))}" stroke="#1E2E5C" stroke-width="4"/>`;
+  G1X.forEach((x, i) => { g += `<circle cx="${sx(x)}" cy="${sy(G1Y[i])}" r="7" fill="#7C6BD6" stroke="#fff" stroke-width="2"/>`; });
+  return `<svg class="plot" viewBox="0 0 640 450" role="img" aria-label="Grafik data dan garis">${g}<defs><clipPath id="cp"><rect x="${X0}" y="${Y0}" width="${PWD}" height="${PHT}"/></clipPath></defs></svg>`;
+}
+const MR = [0, 12], CR = [30, 100], HW = 48, HH = 36;
+function heatmap(path){
+  const W = 480, H = 360, cw = W / HW, ch = H / HH; let g = '';
+  const lb = Math.log(BEST), lt = Math.log(mse(0, 30));
+  for (let i = 0; i < HW; i++) for (let j = 0; j < HH; j++) {
+    const mm = MR[0] + (i + .5) / HW * (MR[1] - MR[0]), cc = CR[1] - (j + .5) / HH * (CR[1] - CR[0]);
+    const t = Math.min(1, Math.max(0, (Math.log(mse(mm, cc)) - lb) / (lt - lb)));
+    const col = `hsl(${220 - t * 180},${55 + t * 20}%,${18 + t * 70}%)`;
+    g += `<rect x="${50 + i * cw}" y="${10 + j * ch}" width="${cw + .4}" height="${ch + .4}" fill="${col}"/>`;
+  }
+  const px = mm => 50 + (mm - MR[0]) / (MR[1] - MR[0]) * W, py = cc => 10 + (CR[1] - cc) / (CR[1] - CR[0]) * H;
+  if (path && path.length > 1) g += `<polyline fill="none" stroke="#fff" stroke-width="3" points="${path.filter(p => isFinite(p[0]) && Math.abs(p[0]) < 1e4).map(p => `${px(Math.max(-2, Math.min(14, p[0])))},${py(Math.max(20, Math.min(110, p[1])))}`).join(' ')}"/>`;
+  (probes || []).forEach(p => g += `<circle cx="${px(p[0])}" cy="${py(p[1])}" r="5" fill="#fff" opacity=".8"/>`);
+  g += `<circle cx="${px(Math.max(MR[0], Math.min(MR[1], m)))}" cy="${py(Math.max(CR[0], Math.min(CR[1], c)))}" r="9" fill="#E8B23A" stroke="#1E2E5C" stroke-width="3"/>`;
+  for (let t = 0; t <= 12; t += 3) g += `<text x="${px(t)}" y="${H + 30}" font-size="14" text-anchor="middle" fill="#56607C">${t}</text>`;
+  for (let v = 30; v <= 100; v += 10) g += `<text x="44" y="${py(v) + 5}" font-size="14" text-anchor="end" fill="#56607C">${v}</text>`;
+  g += `<text x="${50 + W / 2}" y="${H + 50}" font-size="14" font-weight="700" text-anchor="middle" fill="#1E2E5C">kemiringan</text>`;
+  return `<svg class="plot" id="heat" viewBox="0 0 540 420" style="cursor:crosshair;height:${L === 3 ? 34 : 46}vh;min-height:200px;width:100%;flex:0 0 auto" role="img" aria-label="Peta galat">${g}</svg>`;
+}
+function polyPlot(){
+  let g = axes(40, 100, 'Suhu harian (dipetakan 0–10)', 'Hasil panen');
+  const w = PW.list[deg - 1].w; let pts = [];
+  for (let k = 0; k <= 100; k++) { const x = k / 10; pts.push(`${sx(x)},${sy(Math.max(30, Math.min(105, polyEval(w, x))), 40, 100)}`); }
+  g += `<polyline fill="none" stroke="#1E2E5C" stroke-width="4" points="${pts.join(' ')}" clip-path="url(#cp2)"/>`;
+  PTR.forEach(([x, y]) => g += `<circle cx="${sx(x)}" cy="${sy(y, 40, 100)}" r="8" fill="#2F6FD0" stroke="#fff" stroke-width="2"/>`);
+  if (showTest) PTE.forEach(([x, y]) => g += `<circle cx="${sx(x)}" cy="${sy(y, 40, 100)}" r="7" fill="#fff" stroke="#E8892E" stroke-width="4"/>`);
+  return `<svg class="plot" viewBox="0 0 640 450"><defs><clipPath id="cp2"><rect x="${X0}" y="${Y0}" width="${PWD}" height="${PHT}"/></clipPath></defs>${g}</svg>`;
+}
+const fmt = v => isFinite(v) && v < 1e6 ? v.toFixed(1).replace('.', ',') : '∞';
+function start(n){
+  L = n; m = 0; c = 50; probes = []; gdState = null; deg = 1; showTest = false;
+  if (n === 3) { m = 0; c = 20; gdState = { lr: 0.03, path: [[0, 20, mse(0, 20)]], steps: 0 }; }
+  OB.story(root, n, INFO[n-1].t, INFO[n-1].s); hdr.redraw(); draw();
+}
+function draw(){
+  const b = root.querySelector('.board');
+  if (L === 1) {
+    b.innerHTML = `<div class="panel" id="pl"></div><div class="panel col">
+      <h3>🎛 Atur garis</h3>
+      <div class="slider"><label for="sm">Kemiringan</label><input type="range" id="sm" min="0" max="12" step="0.25" value="${m}"><output id="om">${m.toFixed(2)}</output></div>
+      <div class="slider"><label for="sc">Tinggi garis di 5 jam</label><input type="range" id="sc" min="30" max="100" step="0.5" value="${c}"><output id="oc">${c.toFixed(1)}</output></div>
+      <div id="mt"></div>
+      <p class="hint">Garis merah putus-putus adalah <b>galat</b>: selisih nilai sebenarnya dan tebakan garis. MSE = rata-rata dari galat yang dikuadratkan.</p>
+      <div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="chk"><span class="icon">✔</span> Periksa garis</button></div></div>`;
+    const upd = () => { const e = mse(m, c), ok = e <= BEST * 1.2;
+      b.querySelector('#pl').innerHTML = plotLine(); b.querySelector('#om').textContent = m.toFixed(2); b.querySelector('#oc').textContent = c.toFixed(1);
+      b.querySelector('#mt').innerHTML = `<div class="metricrow"><div class="metric"><b>${fmt(e)}</b><span>MSE garismu</span></div><div class="metric"><b>≤ ${fmt(BEST * 1.2)}</b><span>target</span></div></div><div class="goalbar" style="margin-top:8px"><span class="goal ${ok ? 'ok' : ''}">${ok ? '✓ Target tercapai' : 'Belum mencapai target'}</span></div>`; };
+    b.querySelector('#sm').oninput = e => { m = +e.target.value; upd(); };
+    b.querySelector('#sc').oninput = e => { c = +e.target.value; upd(); };
+    b.querySelector('#chk').onclick = () => report(); upd();
+    return;
+  }
+  if (L === 2 || L === 3) {
+    const e = mse(m, c);
+    let ctl = '';
+    if (L === 2) ctl = `<div class="metricrow"><div class="metric"><b>${fmt(e)}</b><span>MSE titik kuning</span></div><div class="metric"><b>${probes.length}</b><span>percobaan</span></div><div class="metric"><b>≤ ${fmt(BEST * 1.1)}</b><span>target</span></div></div>
+      <div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="chk"><span class="icon">✔</span> Pilih titik ini</button></div>`;
+    else ctl = `<p><b>Laju belajar</b></p><div class="seg" id="lr">${[0.01, 0.03, 0.08, 0.1, 0.12, 0.15].map(v => `<button class="${v === gdState.lr ? 'on' : ''}" data-v="${v}">${String(v).replace('.', ',')}</button>`).join('')}</div>
+      <div class="actions" style="justify-content:flex-start"><button class="btn btn-soft" id="s1">1 langkah</button><button class="btn btn-soft" id="s5">5 langkah</button><button class="btn btn-soft" id="rs">↺ Ulang</button><button class="btn btn-main" id="chk">✔ Periksa</button></div>
+      <div class="metricrow"><div class="metric"><b>${fmt(e)}</b><span>MSE sekarang</span></div><div class="metric"><b>${gdState.steps}</b><span>langkah (maks 30)</span></div><div class="metric"><b>≤ ${fmt(BEST * 1.05)}</b><span>target</span></div></div>
+      <div class="chartbox" style="background:var(--sky);border-radius:14px;padding:6px 10px">${OB.lineChart([{ name:'MSE', color:'#7C6BD6', data: gdState.path.map(p => Math.min(p[2], 2500)) }], { ymin:0, ymax:2500, xlabel:'langkah', label:'grafik galat', h:140 })}</div>`;
+    b.innerHTML = `<div class="panel">${plotLine()}</div><div class="panel col"><h3>${L === 2 ? '🗺 Peta galat' : '⛰ Turuni lembah galat'}</h3>${heatmap(L === 3 ? gdState.path : null)}${ctl}</div>`;
+    if (L === 2) {
+      const svg = b.querySelector('#heat');
+      svg.onclick = ev => { const r = svg.getBoundingClientRect(), vx = (ev.clientX - r.left) / r.width * 540, vy = (ev.clientY - r.top) / r.height * 420;
+        if (vx < 50 || vx > 530 || vy < 10 || vy > 370) return;
+        m = MR[0] + (vx - 50) / 480 * (MR[1] - MR[0]); c = CR[1] - (vy - 10) / 360 * (CR[1] - CR[0]); probes.push([m, c]); draw(); };
+    } else {
+      b.querySelectorAll('#lr button').forEach(x => x.onclick = () => { gdState = { lr: +x.dataset.v, path: [[0, 20, mse(0, 20)]], steps: 0 }; m = 0; c = 20; draw(); });
+      const step = k => { for (let i = 0; i < k && gdState.steps < 30; i++) { [m, c] = gdStep(m, c, gdState.lr); gdState.steps++; gdState.path.push([m, c, mse(m, c)]); if (!isFinite(m) || Math.abs(m) > 1e6) break; } if (gdState.steps >= 30) OB.toast('Sudah 30 langkah.'); draw(); };
+      b.querySelector('#s1').onclick = () => step(1); b.querySelector('#s5').onclick = () => step(5);
+      b.querySelector('#rs').onclick = () => { gdState = { lr: gdState.lr, path: [[0, 20, mse(0, 20)]], steps: 0 }; m = 0; c = 20; draw(); };
+    }
+    b.querySelector('#chk').onclick = () => report();
+    return;
+  }
+  b.innerHTML = `<div class="panel" id="pl"></div><div class="panel col"><h3>📈 Kerumitan model</h3>
+    <div class="slider"><label for="dg">Derajat polinomial</label><input type="range" id="dg" min="1" max="7" step="1" value="${deg}"><output id="od">${deg}</output></div>
+    <label style="display:flex;gap:10px;align-items:center;font-weight:700;color:var(--navy)"><input type="checkbox" id="st" ${showTest ? 'checked' : ''} style="width:22px;height:22px"> Tampilkan data uji (oranye)</label>
+    <div id="mt"></div>
+    <div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="chk"><span class="icon">✔</span> Pilih model ini</button></div></div>`;
+  const upd = () => { const p = PW.list[deg - 1];
+    b.querySelector('#pl').innerHTML = polyPlot(); b.querySelector('#od').textContent = deg;
+    b.querySelector('#mt').innerHTML = `<div class="metricrow"><div class="metric"><b>${fmt(p.tr)}</b><span>MSE data latih</span></div><div class="metric"><b>${showTest ? fmt(p.te) : '?'}</b><span>MSE data uji</span></div></div>
+    ${showTest ? `<div style="background:var(--sky);border-radius:14px;padding:6px 10px;margin-top:8px">${OB.lineChart([{ name:'galat latih', color:'#2F6FD0', data: PW.list.map(q => q.tr), dots:true }, { name:'galat uji', color:'#E8892E', data: PW.list.map(q => Math.min(q.te, 130)), dots:true }], { ymin:0, ymax:130, xticks:[1,2,3,4,5,6,7], mark: deg - 1, label:'galat per derajat', h:170 })}</div>` : '<p class="hint" style="margin-top:8px">Tampilkan data uji untuk melihat galat pada data baru.</p>'}`; };
+  b.querySelector('#dg').oninput = e => { deg = +e.target.value; upd(); };
+  b.querySelector('#st').onchange = e => { showTest = e.target.checked; upd(); };
+  b.querySelector('#chk').onclick = () => report(); upd();
+}
+function report(){
+  let stars = 0, what = [], metrics, title, ai, ct;
+  if (L === 1) {
+    const e = mse(m, c), r = e / BEST; stars = r <= 1.05 ? 3 : r <= 1.2 ? 2 : r <= 1.5 ? 1 : 0;
+    metrics = [[fmt(e), 'MSE garismu'], [fmt(BEST), 'MSE terkecil yang mungkin'], [`${m.toFixed(2).replace('.', ',')}`, 'kemiringan']];
+    what = [`Garismu menaikkan nilai sekitar ${m.toFixed(1).replace('.', ',')} poin untuk setiap jam belajar tambahan. Garis terbaik: ${OPT.m.toFixed(2).replace('.', ',')} poin per jam.`,
+      'Galat dikuadratkan supaya galat positif dan negatif tidak saling menghapus, dan galat besar dihukum lebih berat.',
+      r <= 1.2 ? 'Garismu sudah sangat dekat dengan garis terbaik.' : 'Coba perhatikan titik yang galatnya paling panjang. Garis perlu didekatkan ke sana.'];
+    title = stars === 3 ? 'Hampir persis garis terbaik!' : stars ? 'Garis yang cukup baik' : 'Garis masih jauh dari data';
+    ai = 'Menemukan garis terbaik disebut <b>regresi linear</b>. Hampir semua AI belajar dengan cara serupa: menyesuaikan parameter supaya <b>fungsi galat</b> (<i>loss function</i>) sekecil mungkin.'; ct = ['Abstraksi','Evaluasi'];
+  }
+  if (L === 2) {
+    const e = mse(m, c), r = e / BEST, ok = r <= 1.1, k = probes.length;
+    stars = ok ? (k <= 4 ? 3 : k <= 8 ? 2 : 1) : 0;
+    metrics = [[fmt(e), 'MSE pilihanmu'], [k, 'percobaan'], [fmt(BEST), 'MSE minimum']];
+    what = [ok ? `Kamu menemukan lembah galat dalam ${k} percobaan.` : 'Titik yang dipilih belum berada di dasar lembah.', 'Peta ini disebut <b>permukaan galat</b>. Bentuknya seperti lembah memanjang: mengubah kemiringan sedikit berdampak besar, mengubah tinggi garis berdampak lebih kecil.',
+      'Dengan dua parameter, kita masih bisa menggambar petanya. Model AI modern punya jutaan sampai miliaran parameter, sehingga petanya mustahil digambar.'];
+    title = ok ? 'Lembah ditemukan!' : 'Belum di dasar lembah';
+    ai = 'Karena peta galat tidak bisa digambar untuk jutaan parameter, AI memakai cara lain untuk turun ke lembah: mengikuti arah turunan. Itulah tantangan level berikutnya.'; ct = ['Abstraksi','Pengenalan pola'];
+  }
+  if (L === 3) {
+    const e = mse(m, c), r = e / BEST, ok = r <= 1.05 && gdState.steps <= 30, div = !isFinite(e) || e > mse(0, 20);
+    stars = ok ? (gdState.steps <= 15 ? 3 : 2) : 0;
+    metrics = [[fmt(e), 'MSE akhir'], [gdState.steps, 'langkah'], [String(gdState.lr).replace('.', ','), 'laju belajar']];
+    what = [div ? 'Galat justru membesar! Laju belajar terlalu besar membuat langkah melompati lembah lalu terlempar makin jauh (<b>divergen</b>).'
+      : ok ? `Dengan laju belajar ${String(gdState.lr).replace('.', ',')}, galat turun ke ${fmt(e)} dalam ${gdState.steps} langkah.` : gdState.lr <= 0.03 ? 'Laju belajar kecil membuat langkah terlalu pendek. Turunnya pasti, tetapi lambat.' : 'Galat belum cukup kecil. Tambah langkahnya atau coba laju belajar lain.',
+      'Setiap langkah: hitung turunan galat terhadap setiap parameter, lalu geser parameter sedikit ke arah yang membuat galat mengecil. Besar langkahnya = laju belajar × turunan.',
+      'Garis putih di peta menunjukkan jalur turunnya. Bandingkan bentuk jalur untuk laju belajar yang berbeda.'];
+    title = ok ? 'Turun dengan mulus!' : div ? 'Melompat keluar lembah' : 'Belum sampai dasar';
+    ai = 'Inilah <b>penurunan gradien</b> (<i>gradient descent</i>), mesin di balik pelatihan hampir semua jaringan saraf. Memilih laju belajar yang tepat adalah salah satu keterampilan penting para insinyur AI.'; ct = ['Algoritma','Evaluasi'];
+  }
+  if (L === 4) {
+    const p = PW.list[deg - 1];
+    stars = deg === 2 ? 3 : (deg === 3 || deg === 4) ? 2 : (deg === 5 || deg === 6) ? 1 : 0;
+    metrics = [[deg, 'derajat'], [fmt(p.tr), 'galat latih'], [fmt(p.te), 'galat uji']];
+    what = [`Derajat ${deg}: galat latih ${fmt(p.tr)}, galat uji ${fmt(p.te)}.`,
+      deg === 1 ? 'Garis lurus terlalu sederhana untuk pola melengkung ini (<b>underfitting</b>). Galat latih dan uji sama-sama besar.'
+      : deg === 7 ? 'Derajat 7 melewati semua titik latih (galat latih 0), tetapi meliuk liar di antara titik sehingga gagal pada data uji. Ini <b>overfitting</b>: menghafal, bukan memahami.'
+      : deg === 2 ? 'Derajat 2 menangkap pola “naik lalu turun” dengan model paling sederhana. Galat ujinya paling kecil.'
+      : 'Galat ujinya hampir sama dengan derajat 2, tetapi modelnya lebih rumit tanpa manfaat berarti. Bila hasilnya setara, pilih model yang lebih sederhana.',
+      'Galat latih selalu turun saat model makin rumit. Hanya data uji yang bisa menunjukkan kapan model mulai menghafal.'];
+    title = stars === 3 ? 'Pilihan model yang bijak!' : stars ? 'Model yang lumayan' : 'Model ini gagal pada data baru';
+    ai = 'Ilmuwan data selalu memisahkan <b>data latih</b> dan <b>data uji</b>. Model AI yang hanya hebat pada data latihnya bisa gagal total di dunia nyata.'; ct = ['Abstraksi','Evaluasi'];
+  }
+  if (stars) OB.save('m1', L, stars);
+  OB.result({ stars, title, subtitle:`Level ${L}: ${INFO[L-1].t}`, metrics, what, ai, ct, next: stars && L < 4 ? () => start(L + 1) : null });
+}
+return { id:'m1', icon:'📉', color:'#7C6BD6', title:'Garis Terbaik', idea:'Bagaimana model belajar: galat dan gradien', topics:'Regresi, fungsi galat, gradient descent, overfitting',
+  mount(el, lvl){ root = el; hdr = OB.frame(root, 'm1', { icon:'📉', color:'#7C6BD6', title:'Garis Terbaik', current:() => L, onPick:start,
+    onHelp:() => OB.info('Cara bermain', '<p>Model sederhana menebak nilai dengan garis: <b>tebakan = kemiringan × (jam − 5) + tinggi garis</b>.</p><p style="margin-top:10px"><b>Galat</b> adalah selisih nilai sebenarnya dan tebakan. <b>MSE</b> (rata-rata kuadrat galat) mengukur seberapa buruk garis secara keseluruhan.</p><p style="margin-top:10px">Belajar bagi mesin berarti mencari parameter yang membuat MSE sekecil mungkin.</p>') });
+    start(lvl && OB.unlocked('m1', lvl) ? lvl : 1); }
+};
+})());
+
+/* ===== Misi 2: Ambang Keputusan ===== */
+GAMES.push((() => {
+function g2rng(seed){ let s=seed; return ()=> (s = s*16807 % 2147483647)/2147483647; }
+function g2normal(r){ let u=0,v=0; while(!u) u=r(); while(!v) v=r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function g2make(seed, groups){ const r=g2rng(seed), out=[]; groups.forEach(([n,mu,sd,label,grp])=>{ for(let i=0;i<n;i++) out.push({ s: Math.max(1,Math.min(99,Math.round(mu+sd*g2normal(r)))), y: label, g: grp }); }); return out; }
+const G2SETS = [
+  g2make(11, [[20,68,12,1,'A'],[20,38,12,0,'A']]),
+  g2make(23, [[20,66,13,1,'A'],[24,38,12,0,'A']]),
+  g2make(37, [[16,64,13,1,'A'],[28,40,12,0,'A']]),
+  g2make(51, [[18,74,8,1,'A'],[18,47,9,0,'A'],[18,52,8,1,'B'],[18,33,9,0,'B']]),
+];
+function g2eval(data, thA, thB){ const m={TP:0,FP:0,TN:0,FN:0}; data.forEach(d=>{ const th = d.g==='B' && thB!==undefined ? thB : thA; const p = d.s>=th ? 1:0; if(p&&d.y) m.TP++; else if(p&&!d.y) m.FP++; else if(!p&&d.y) m.FN++; else m.TN++; }); const n=data.length; return {...m, acc:(m.TP+m.TN)/n, prec: m.TP+m.FP? m.TP/(m.TP+m.FP):0, rec: m.TP+m.FN? m.TP/(m.TP+m.FN):0, fpr: m.FP+m.TN? m.FP/(m.FP+m.TN):0 }; }
+
+const INFO = [
+  { t:'Membaca matriks kebingungan', s:'AI pemindai daun memberi <b>skor penyakit blas</b> 0–100 untuk setiap foto daun padi (fiktif). Daun dengan skor di atas <b>ambang</b> dinyatakan sakit. Geser ambang sampai <b>akurasi ≥ 85%</b>.', goal:{ acc:0.85 } },
+  { t:'Jangan lewatkan yang sakit', s:'Penyakit blas cepat menular. Petani ingin hampir semua daun sakit terdeteksi: <b>recall ≥ 95%</b>, tetapi peringatan palsu jangan terlalu banyak: <b>presisi ≥ 70%</b>.', goal:{ rec:0.95, prec:0.70 } },
+  { t:'Harga sebuah kesalahan', s:'Daun sakit yang terlewat (FN) bisa menyebabkan gagal panen: <b>kerugian 10</b>. Penyemprotan yang tidak perlu (FP): <b>kerugian 1</b>. Cari ambang dengan <b>total kerugian terkecil</b>.', goal:{ cost:true } },
+  { t:'Adil untuk dua desa', s:'Desa B memakai kamera lama, sehingga skor daun sakitnya cenderung lebih rendah. Targetnya untuk <b>setiap desa</b>: recall ≥ 85% dan tingkat alarm palsu (FPR) ≤ 25%.', goal:{ fair:true } },
+];
+let L = 1, root, hdr, th, thB, split, data, tries;
+const COSTMIN = (() => { let mn = Infinity; for (let t = 0; t <= 100; t++) { const e = g2eval(G2SETS[2], t); mn = Math.min(mn, e.FN * 10 + e.FP); } return mn; })();
+const pct = v => Math.round(v * 100) + '%';
+function strip(){
+  const groups = L === 4 ? [['A',1,'Desa A · sakit'],['A',0,'Desa A · sehat'],['B',1,'Desa B · sakit'],['B',0,'Desa B · sehat']] : [['A',1,'Sakit (sebenarnya)'],['A',0,'Sehat (sebenarnya)']];
+  const W = 640, rowH = L === 4 ? 78 : 130, top = 30, H = top + rowH * groups.length + 50, X0 = 140, PW = 470, sx = s => X0 + s / 100 * PW;
+  const r = OB.rng(7); let g = '';
+  const thFor = grp => (grp === 'B' && split) ? thB : th;
+  groups.forEach(([grp, y, lab], i) => {
+    const y0 = top + i * rowH, t = thFor(grp);
+    g += `<rect x="${X0}" y="${y0 + 6}" width="${PW}" height="${rowH - 12}" fill="#F4F7FB" rx="10"/>`;
+    g += `<rect x="${sx(t)}" y="${y0 + 6}" width="${X0 + PW - sx(t)}" height="${rowH - 12}" fill="#FDE3DE" rx="10" opacity=".7"/>`;
+    g += `<text x="${X0 - 10}" y="${y0 + rowH / 2 + 5}" font-size="15" font-weight="700" text-anchor="end" fill="#1E2E5C">${lab}</text>`;
+    data.filter(d => d.g === grp && d.y === y).forEach(d => {
+      const cy = y0 + 16 + r() * (rowH - 32), pred = d.s >= t;
+      g += y ? `<circle cx="${sx(d.s)}" cy="${cy}" r="7" fill="#D9503C" stroke="${pred ? '#fff' : '#1E2E5C'}" stroke-width="${pred ? 1.5 : 3}"/>` : `<rect x="${sx(d.s) - 6}" y="${cy - 6}" width="12" height="12" fill="#3E9A4C" stroke="${pred ? '#1E2E5C' : '#fff'}" stroke-width="${pred ? 3 : 1.5}"/>`;
+    });
+    if (L === 4 || i === 0) g += `<line x1="${sx(t)}" x2="${sx(t)}" y1="${y0}" y2="${y0 + rowH}" stroke="#1E2E5C" stroke-width="3"/>`;
+  });
+  if (L !== 4) g += `<line x1="${sx(th)}" x2="${sx(th)}" y1="${top}" y2="${top + rowH * groups.length}" stroke="#1E2E5C" stroke-width="3"/><text x="${sx(th)}" y="${top - 8}" font-size="15" font-weight="800" text-anchor="middle" fill="#1E2E5C">ambang ${th}</text>`;
+  for (let s = 0; s <= 100; s += 20) g += `<text x="${sx(s)}" y="${H - 26}" font-size="14" text-anchor="middle" fill="#56607C">${s}</text>`;
+  g += `<text x="${X0 + PW / 2}" y="${H - 6}" font-size="15" font-weight="700" text-anchor="middle" fill="#1E2E5C">Skor penyakit dari AI → (area merah muda = dinyatakan sakit)</text>`;
+  return `<svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sebaran skor AI">${g}</svg>`;
+}
+function cm(e, title){ return `<table class="cm"><tr><th>${title || ''}</th><th>AI: sakit</th><th>AI: sehat</th></tr><tr><th>Sebenarnya sakit</th><td class="tp">TP ${e.TP}</td><td class="fn">FN ${e.FN}</td></tr><tr><th>Sebenarnya sehat</th><td class="fp">FP ${e.FP}</td><td class="tn">TN ${e.TN}</td></tr></table>`; }
+function evalAll(){
+  if (L === 4) { const A = data.filter(d => d.g === 'A'), B = data.filter(d => d.g === 'B'); return { A: g2eval(A, th), B: g2eval(B, split ? thB : th) }; }
+  return g2eval(data, th);
+}
+function goals(e){
+  if (L === 1) return [['Akurasi ≥ 85%', e.acc >= 0.85]];
+  if (L === 2) return [['Recall ≥ 95%', e.rec >= 0.95], ['Presisi ≥ 70%', e.prec >= 0.70]];
+  if (L === 3) { const cost = e.FN * 10 + e.FP; return [[`Kerugian ${cost} (terkecil ${COSTMIN})`, cost <= COSTMIN + 1]]; }
+  return [['Recall Desa A ≥ 85%', e.A.rec >= 0.85], ['FPR Desa A ≤ 25%', e.A.fpr <= 0.25], ['Recall Desa B ≥ 85%', e.B.rec >= 0.85], ['FPR Desa B ≤ 25%', e.B.fpr <= 0.25]];
+}
+function start(n){ L = n; data = G2SETS[n - 1]; th = 70; thB = 70; split = false; tries = 0; OB.story(root, n, INFO[n-1].t, INFO[n-1].s); hdr.redraw(); draw(); }
+function draw(){
+  const b = root.querySelector('.board');
+  b.innerHTML = `<div class="panel" id="pl"></div><div class="panel col">
+    <h3>🎚 Ambang keputusan</h3>
+    <div class="slider"><label for="th">${L === 4 ? 'Ambang Desa A' + (split ? '' : ' dan B') : 'Ambang'}</label><input type="range" id="th" min="0" max="100" step="1" value="${th}"><output id="oth">${th}</output></div>
+    ${L === 4 ? `<label style="display:flex;gap:10px;align-items:center;font-weight:700;color:var(--navy)"><input type="checkbox" id="sp" ${split ? 'checked' : ''} style="width:22px;height:22px"> Pakai ambang terpisah untuk Desa B</label>
+      ${split ? `<div class="slider"><label for="thb">Ambang Desa B</label><input type="range" id="thb" min="0" max="100" step="1" value="${thB}"><output id="othb">${thB}</output></div>` : ''}` : ''}
+    <div id="mt"></div>
+    <div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="chk"><span class="icon">✔</span> Tetapkan ambang</button></div></div>`;
+  const upd = () => {
+    const e = evalAll(); b.querySelector('#pl').innerHTML = strip(); b.querySelector('#oth').textContent = th; if (b.querySelector('#othb')) b.querySelector('#othb').textContent = thB;
+    let h = '';
+    if (L === 4) h += `<div style="display:flex;gap:10px;flex-wrap:wrap">${cm(e.A, 'Desa A')}${cm(e.B, 'Desa B')}</div>
+      <div class="metricrow" style="margin-top:8px"><div class="metric"><b>${pct(e.A.rec)} · ${pct(e.A.fpr)}</b><span>Desa A: recall · FPR</span></div><div class="metric"><b>${pct(e.B.rec)} · ${pct(e.B.fpr)}</b><span>Desa B: recall · FPR</span></div></div>`;
+    else h += `${cm(e)}<div class="metricrow" style="margin-top:8px"><div class="metric"><b>${pct(e.acc)}</b><span>akurasi</span></div><div class="metric"><b>${pct(e.prec)}</b><span>presisi</span></div><div class="metric"><b>${pct(e.rec)}</b><span>recall</span></div>${L === 3 ? `<div class="metric"><b>${e.FN * 10 + e.FP}</b><span>kerugian (10×FN + FP)</span></div>` : ''}</div>`;
+    h += `<div class="goalbar" style="margin-top:8px">${goals(e).map(([t, ok]) => `<span class="goal ${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'} ${t}</span>`).join('')}</div>`;
+    b.querySelector('#mt').innerHTML = h;
+  };
+  b.querySelector('#th').oninput = e => { th = +e.target.value; upd(); };
+  if (b.querySelector('#thb')) b.querySelector('#thb').oninput = e => { thB = +e.target.value; upd(); };
+  if (b.querySelector('#sp')) b.querySelector('#sp').onchange = e => { split = e.target.checked; thB = th; draw(); };
+  b.querySelector('#chk').onclick = report; upd();
+}
+function report(){
+  tries++;
+  const e = evalAll(), gs = goals(e), ok = gs.every(g => g[1]);
+  let stars = ok ? (tries <= 2 ? 3 : 2) : gs.filter(g => g[1]).length >= gs.length - 1 && L === 4 ? 0 : 0;
+  if (ok) OB.save('m2', L, stars);
+  const what = [];
+  if (L < 4) what.push(`Dengan ambang ${th}: TP ${e.TP}, FN ${e.FN}, FP ${e.FP}, TN ${e.TN}. Akurasi ${pct(e.acc)}, presisi ${pct(e.prec)}, recall ${pct(e.rec)}.`);
+  if (L === 1) what.push('<b>Akurasi</b> = semua tebakan benar ÷ semua daun. Ambang yang terlalu rendah membuat banyak daun sehat dinyatakan sakit (FP); terlalu tinggi membuat daun sakit terlewat (FN).');
+  if (L === 2) what.push('<b>Recall</b> = dari semua daun yang benar-benar sakit, berapa yang tertangkap. <b>Presisi</b> = dari semua yang dinyatakan sakit, berapa yang benar-benar sakit. Menurunkan ambang menaikkan recall tetapi menurunkan presisi.', ok ? 'Kamu menemukan ambang di celah sempit yang memenuhi keduanya.' : 'Coba geser ambang perlahan dan perhatikan kapan FN menjadi sangat kecil tanpa FP melonjak.');
+  if (L === 3) { const accBest = (() => { let b = 0, bt = 0; for (let t = 0; t <= 100; t++) { const x = g2eval(data, t); if (x.acc > b) { b = x.acc; bt = t; } } const x = g2eval(data, bt); return [bt, x.FN * 10 + x.FP]; })();
+    what.push(`Kerugianmu ${e.FN * 10 + e.FP}; kerugian terkecil ${COSTMIN}.`, `Ambang dengan akurasi tertinggi (${accBest[0]}) justru menghasilkan kerugian ${accBest[1]}. Karena FN jauh lebih mahal, ambang terbaik bergeser ke bawah.`); }
+  if (L === 4) {
+    what.push(`Desa A: recall ${pct(e.A.rec)}, FPR ${pct(e.A.fpr)}. Desa B: recall ${pct(e.B.rec)}, FPR ${pct(e.B.fpr)}.`);
+    what.push(split ? 'Dengan ambang terpisah, kedua desa mendapat perlindungan yang setara.' : 'Dengan satu ambang, tidak ada nilai yang memenuhi kedua desa: kalau cocok untuk Desa A, banyak daun sakit di Desa B terlewat; kalau cocok untuk Desa B, Desa A dibanjiri alarm palsu.');
+    what.push('Ambang terpisah hanyalah tambalan. Akar masalahnya adalah <b>kualitas data</b> dari kamera lama. Solusi yang lebih adil: memperbaiki alat dan melatih ulang model dengan foto dari Desa B.');
+  }
+  OB.result({ stars, title: ok ? 'Ambang yang tepat!' : 'Target belum tercapai', subtitle:`Level ${L}: ${INFO[L-1].t}`,
+    metrics: L === 4 ? [[pct(e.A.rec), 'recall Desa A'], [pct(e.B.rec), 'recall Desa B'], [tries, 'percobaan']] : [[pct(e.acc), 'akurasi'], [pct(e.prec), 'presisi'], [pct(e.rec), 'recall'], ...(L === 3 ? [[e.FN * 10 + e.FP, 'kerugian']] : [])],
+    what,
+    ai: L === 4 ? 'AI bisa bekerja lebih buruk untuk kelompok yang datanya berkualitas rendah atau kurang terwakili. <b>Audit keadilan</b>, yaitu memeriksa kinerja AI per kelompok, kini menjadi praktik penting sebelum AI dipakai di layanan publik.'
+      : L === 3 ? 'Di dunia nyata, setiap jenis kesalahan punya harga yang berbeda: melewatkan penyakit, menolak pinjaman orang yang layak, atau salah menuduh. Memilih ambang adalah <b>keputusan nilai</b>, bukan hanya keputusan teknis.'
+      : 'AI klasifikasi biasanya memberi skor, lalu manusia memilih <b>ambang</b>. Matriks kebingungan, presisi, dan recall dipakai untuk menilai AI medis, filter spam, sampai pengenal wajah.',
+    ct: ['Evaluasi','Abstraksi', L >= 3 ? 'Etika' : 'Pengenalan pola'], onRetry:() => {}, next: ok && L < 4 ? () => start(L + 1) : null });
+}
+return { id:'m2', icon:'⚖️', color:'#D9503C', title:'Ambang Keputusan', idea:'Menilai AI: presisi, recall, biaya, keadilan', topics:'Matriks kebingungan, presisi/recall, biaya kesalahan, keadilan',
+  mount(el, lvl){ root = el; hdr = OB.frame(root, 'm2', { icon:'⚖️', color:'#D9503C', title:'Ambang Keputusan', current:() => L, onPick:start,
+    onHelp:() => OB.info('Cara bermain', '<p>Lingkaran merah = daun yang benar-benar sakit. Kotak hijau = daun sehat. Posisinya menunjukkan skor dari AI.</p><p style="margin-top:10px">Semua daun di kanan garis ambang dinyatakan <b>sakit</b> oleh AI. <b>TP</b>: sakit dan terdeteksi. <b>FN</b>: sakit tetapi terlewat. <b>FP</b>: sehat tetapi dinyatakan sakit. <b>TN</b>: sehat dan dinyatakan sehat.</p><p style="margin-top:10px">Tanda yang bergaris tebal adalah tebakan yang salah.</p>') });
+    start(lvl && OB.unlocked('m2', lvl) ? lvl : 1); }
+};
+})());
+
+/* ===== Misi 3: Rute Tercepat ===== */
+GAMES.push((() => {
+const G3MAPS = [
+  ['S...#.......',
+   '.##.#.####..',
+   '.#..#....#..',
+   '.#.###.#.#.#',
+   '.#.....#...#',
+   '.#####.###.#',
+   '.......#...G'],
+  ['S.....~~~.....',
+   '.###..~~~.###.',
+   '.#....~~~...#.',
+   '.#.##.~~~.#.#.',
+   '...#..~~~.#...',
+   '.#.#..~~~.##..',
+   '.#....~~~....G',
+   '.####.....###.'],
+  ['..............',
+   '..............',
+   '.....#####....',
+   'S....#...#...G',
+   '.....#...#....',
+   '.....##.##....',
+   '..............',
+   '..............'],
+  ['..............',
+   '.##..~~~~..##.',
+   '.#...~~~~...#.',
+   'S...#~~~~#...G',
+   '.#...~~~~...#.',
+   '.##..~~~~..##.',
+   '.....#..#.....',
+   '..............'],
+];
+const COST = { '.':1, 'S':1, 'G':1, '~':4 };
+function g3find(map, ch){ for (let r=0;r<map.length;r++){ const c=map[r].indexOf(ch); if(c>=0) return [r,c]; } }
+function g3search(map, algo, w=1){
+  const H=map.length, W=map[0].length, S=g3find(map,'S'), G=g3find(map,'G'), key=(r,c)=>r*W+c;
+  const g=new Map([[key(...S),0]]), prev=new Map(), closed=new Set(), order=[];
+  const h=(r,c)=>Math.abs(r-G[0])+Math.abs(c-G[1]);
+  let open=[[0,0,S[0],S[1]]], tie=0;
+  while(open.length){
+    let bi=0; for(let i=1;i<open.length;i++){ if(open[i][0]<open[bi][0]||(open[i][0]===open[bi][0]&&open[i][1]<open[bi][1])) bi=i; }
+    const [,,r,c]=open.splice(bi,1)[0], k=key(r,c);
+    if(closed.has(k)) continue; closed.add(k); order.push([r,c]);
+    if(r===G[0]&&c===G[1]) break;
+    for(const [dr,dc] of [[-1,0],[0,1],[1,0],[0,-1]]){
+      const nr=r+dr, nc=c+dc, t=(map[nr]||'')[nc]; if(t===undefined||t==='#') continue;
+      const nk=key(nr,nc); if(closed.has(nk)) continue;
+      const step = algo==='bfs' ? 1 : COST[t];
+      const ng=g.get(k)+step;
+      if(!g.has(nk)||ng<g.get(nk)){ g.set(nk,ng); prev.set(nk,k);
+        const f = algo==='astar' ? ng + w*h(nr,nc) : ng;
+        open.push([f, ++tie, nr, nc]); }
+    }
+  }
+  const path=[]; let k=key(...G); if(!prev.has(k) && !(S[0]===G[0]&&S[1]===G[1])) return { order, path:[], cost:Infinity };
+  while(k!==undefined){ path.unshift([Math.floor(k/W), k%W]); k=prev.get(k); }
+  const cost=path.slice(1).reduce((a,[r,c])=>a+COST[map[r][c]],0);
+  return { order, path, cost, explored: order.length };
+}
+
+const INFO = [
+  { t:'Rencanakan sendiri', s:'Kurir Bina harus mengantar paket 📦 di kota (fiktif). Ketuk kotak jalan satu per satu dari motor 🛵 untuk menggambar rute, lalu bandingkan dengan algoritma <b>BFS</b> (pencarian melebar).' },
+  { t:'Jalan yang macet', s:'Sekarang ada jalan macet 🟧 yang butuh waktu 4 kali lipat. Pilih algoritma yang menemukan rute <b>tercepat</b> (biaya waktu terkecil), bukan sekadar rute dengan kotak paling sedikit.' },
+  { t:'Mencari dengan arah', s:'Rute harus tetap tercepat, tetapi komputer kurir lambat: ia hanya sempat memeriksa <b>paling banyak 50 kotak</b>. Pilih algoritma yang tahu arah tujuan.' },
+  { t:'Seberapa yakin pada tebakan arah?', s:'A* menjumlahkan biaya yang sudah ditempuh dengan <b>bobot × perkiraan jarak</b> ke tujuan. Atur bobotnya: rute harus tetap tercepat, dan kotak yang diperiksa <b>paling banyak 40</b>.' },
+];
+const ALG = { bfs:'BFS', dijkstra:'Dijkstra', astar:'A*' };
+let L = 1, root, hdr, map, route, algo, w, run, animT, tries;
+const opt = () => g3search(map, 'dijkstra').cost;
+function start(n){ L = n; map = G3MAPS[n - 1]; route = [g3find(map, 'S')]; algo = n === 1 ? 'bfs' : 'bfs'; w = 1; run = null; tries = 0; clearInterval(animT); OB.story(root, n, INFO[n-1].t, INFO[n-1].s); hdr.redraw(); draw(); }
+function gridSvg(shown){
+  const H = map.length, W = map[0].length, cs = Math.min(640 / W, 440 / H), sw = W * cs, sh = H * cs; let g = '';
+  const ord = new Map(); if (run && shown) run.order.slice(0, shown).forEach(([r, c], i) => ord.set(r + ',' + c, i));
+  const onPath = new Set(run && shown >= run.order.length ? run.path.map(p => p.join(',')) : []);
+  const onRoute = new Set(route.map(p => p.join(',')));
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+    const t = map[r][c], x = c * cs, y = r * cs; let fill = t === '#' ? '#8E9BAD' : t === '~' ? '#F4B76A' : '#F7FAFC';
+    if (ord.has(r + ',' + c) && t !== '#') fill = t === '~' ? '#E8A04E' : '#CFE3F7';
+    g += `<rect x="${x + 1}" y="${y + 1}" width="${cs - 2}" height="${cs - 2}" rx="${cs * .18}" fill="${fill}" data-r="${r}" data-c="${c}"/>`;
+    if (t === '#') g += `<text x="${x + cs / 2}" y="${y + cs * .66}" font-size="${cs * .42}" text-anchor="middle">🏢</text>`;
+    if (onPath.has(r + ',' + c) && t !== 'S' && t !== 'G') g += `<circle cx="${x + cs / 2}" cy="${y + cs / 2}" r="${cs * .2}" fill="#1E2E5C" pointer-events="none"/>`;
+    if (L === 1 && onRoute.has(r + ',' + c) && t !== 'S') g += `<circle cx="${x + cs / 2}" cy="${y + cs / 2}" r="${cs * .17}" fill="#E8B23A" stroke="#8A6300" stroke-width="2" pointer-events="none"/>`;
+    if (t === 'S') g += `<text x="${x + cs / 2}" y="${y + cs * .7}" font-size="${cs * .55}" text-anchor="middle" pointer-events="none">🛵</text>`;
+    if (t === 'G') g += `<text x="${x + cs / 2}" y="${y + cs * .7}" font-size="${cs * .55}" text-anchor="middle" pointer-events="none">📦</text>`;
+  }
+  if (L === 1 && route.length > 1) g += `<polyline fill="none" stroke="#8A6300" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" pointer-events="none" points="${route.map(([r, c]) => `${c * cs + cs / 2},${r * cs + cs / 2}`).join(' ')}"/>`;
+  return `<svg class="plot" id="gsvg" viewBox="0 0 ${sw} ${sh}" role="img" aria-label="Peta kota">${g}</svg>`;
+}
+const routeCost = () => route.slice(1).reduce((a, [r, c]) => a + COST[map[r][c]], 0);
+function draw(shown){
+  const b = root.querySelector('.board');
+  const legend = `<p class="hint">⬜ jalan (waktu 1) · 🟧 macet (waktu 4) · 🏢 gedung · biru = kotak yang sudah diperiksa algoritma · titik navy = rute algoritma${L === 1 ? ' · titik emas = rutemu' : ''}</p>`;
+  let side = '';
+  if (L === 1) side = `<h3>✏️ Rutemu</h3><div class="metricrow"><div class="metric"><b>${route.length - 1}</b><span>langkah rutemu</span></div><div class="metric"><b>${route.length > 1 && map[route[route.length-1][0]][route[route.length-1][1]] === 'G' ? 'Sampai' : 'Belum'}</b><span>di tujuan</span></div></div>
+    <p class="hint">Ketuk kotak di sebelah ujung rute untuk menambah. Ketuk ujung rute untuk menghapus langkah terakhir.</p>
+    <div class="actions" style="justify-content:flex-start"><button class="btn btn-soft" id="clr">↺ Hapus rute</button><button class="btn btn-main" id="go">▶ Bandingkan dengan BFS</button></div>`;
+  else side = `<h3>🧭 Algoritma</h3><div class="seg" id="alg">${Object.entries(ALG).map(([k, v]) => `<button class="${k === algo ? 'on' : ''}" data-k="${k}">${v}</button>`).join('')}</div>
+    ${L === 4 && algo === 'astar' ? `<div class="slider"><label for="w">Bobot perkiraan</label><input type="range" id="w" min="0" max="3" step="0.5" value="${w}"><output>${String(w).replace('.', ',')}</output></div>` : L === 4 ? '<p class="hint">Pilih A* untuk mengatur bobot perkiraan.</p>' : ''}
+    <div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="go">▶ Jalankan pencarian</button></div>`;
+  if (run && shown >= run.order.length) side += `<div class="metricrow"><div class="metric"><b>${run.cost}</b><span>waktu tempuh rute</span></div><div class="metric"><b>${run.explored}</b><span>kotak diperiksa</span></div><div class="metric"><b>${opt()}</b><span>waktu tercepat</span></div></div>`;
+  b.innerHTML = `<div class="panel col" style="justify-content:center">${gridSvg(shown)}${legend}</div><div class="panel col">${side}</div>`;
+  if (L === 1) {
+    b.querySelector('#gsvg').onclick = ev => { const t = ev.target; if (t.dataset.r === undefined || run) return; const r = +t.dataset.r, c = +t.dataset.c, last = route[route.length - 1];
+      if (route.length > 1 && r === last[0] && c === last[1]) { route.pop(); draw(); return; }
+      if (Math.abs(r - last[0]) + Math.abs(c - last[1]) !== 1 || map[r][c] === '#') return OB.toast('Pilih kotak jalan yang bersebelahan dengan ujung rute.');
+      if (map[last[0]][last[1]] === 'G') return OB.toast('Rutemu sudah sampai tujuan.');
+      route.push([r, c]); draw(); };
+    b.querySelector('#clr').onclick = () => { route = [g3find(map, 'S')]; run = null; draw(); };
+    b.querySelector('#go').onclick = () => { const e = route[route.length - 1]; if (map[e[0]][e[1]] !== 'G') return OB.toast('Selesaikan rutemu sampai ke paket dulu.'); animate('bfs'); };
+  } else {
+    b.querySelectorAll('#alg button').forEach(x => x.onclick = () => { algo = x.dataset.k; run = null; draw(); });
+    if (b.querySelector('#w')) b.querySelector('#w').oninput = e => { w = +e.target.value; e.target.nextElementSibling.textContent = String(w).replace('.', ','); };
+    b.querySelector('#go').onclick = () => animate(algo);
+  }
+}
+function animate(a){
+  clearInterval(animT); tries++; run = g3search(map, a, a === 'astar' ? (L === 4 ? w : 1) : 1); run.algo = a; let k = 0;
+  root.querySelectorAll('#go').forEach(x => x.disabled = true);
+  animT = setInterval(() => { k += 2; draw(Math.min(k, run.order.length)); root.querySelectorAll('#go').forEach(x => x.disabled = true); if (k >= run.order.length) { clearInterval(animT); draw(run.order.length); setTimeout(report, 500); } }, 30);
+}
+function report(){
+  const best = opt(); let stars = 0, what = [], ok = false;
+  const name = ALG[run.algo] + (run.algo === 'astar' && L === 4 ? ` (bobot ${String(w).replace('.', ',')})` : '');
+  if (L === 1) {
+    const mine = route.length - 1, short = run.path.length - 1; ok = true;
+    stars = mine <= short ? 3 : mine <= short + 4 ? 2 : 1;
+    what = [`Rutemu ${mine} langkah. BFS menemukan ${short} langkah setelah memeriksa ${run.explored} kotak.`, 'BFS memeriksa kotak lapis demi lapis: semua kotak berjarak 1, lalu 2, lalu 3, dan seterusnya. Karena itu rute pertama yang sampai ke tujuan pasti yang terpendek.', 'Kamu memakai intuisi visual. Komputer tidak bisa “melihat” peta, jadi ia harus memeriksa kotak secara sistematis.'];
+  } else {
+    const optimal = run.cost === best, limit = L === 3 ? 50 : L === 4 ? 40 : Infinity, fast = run.explored <= limit; ok = optimal && fast;
+    stars = ok ? (tries <= 3 ? 3 : 2) : 0;
+    what.push(`${name}: waktu tempuh ${run.cost} (tercepat ${best}), memeriksa ${run.explored} kotak${isFinite(limit) ? ` (batas ${limit})` : ''}.`);
+    if (run.algo === 'bfs' && !optimal) what.push('BFS menghitung jumlah kotak, bukan waktu. Ia memilih rute pendek yang melewati jalan macet.');
+    if (run.algo === 'bfs' && optimal && !fast) what.push('BFS menemukan rute tercepat karena semua jalan berbiaya sama, tetapi ia memeriksa ke segala arah tanpa tahu letak tujuan.');
+    if (run.algo === 'dijkstra') what.push(fast ? 'Dijkstra selalu memeriksa kotak dengan waktu tempuh terkecil lebih dulu, sehingga rutenya pasti tercepat.' : 'Dijkstra pasti menemukan rute tercepat, tetapi ia menyebar ke segala arah seperti riak air dan memeriksa terlalu banyak kotak.');
+    if (run.algo === 'astar') {
+      if (!optimal) what.push('Bobot perkiraan terlalu besar: A* terlalu “yakin” bahwa jalan lurus ke tujuan pasti baik, sehingga menerobos jalan macet. Perkiraan yang <b>melebihi</b> biaya sebenarnya bisa merusak jaminan rute tercepat.');
+      else if (!fast) what.push(L === 4 && w < 1 ? 'Bobot kecil membuat A* hampir sama dengan Dijkstra: aman, tetapi memeriksa banyak kotak.' : 'A* sudah tercepat, tetapi masih memeriksa terlalu banyak kotak. Coba bobot yang sedikit lebih besar.');
+      else what.push('A* memprioritaskan kotak yang menjanjikan: biaya yang sudah ditempuh ditambah perkiraan jarak ke tujuan. Hasilnya tetap tercepat, dengan pemeriksaan jauh lebih sedikit.');
+    }
+  }
+  if (stars) OB.save('m3', L, stars);
+  OB.result({ stars, title: ok ? (stars === 3 ? 'Rute terbaik ditemukan!' : 'Berhasil!') : 'Belum memenuhi target', subtitle:`Level ${L}: ${INFO[L-1].t}`,
+    metrics: L === 1 ? [[route.length - 1, 'langkah rutemu'], [run.path.length - 1, 'langkah BFS'], [run.explored, 'kotak diperiksa BFS']] : [[run.cost, 'waktu tempuh'], [best, 'waktu tercepat'], [run.explored, 'kotak diperiksa']],
+    what,
+    ai: L === 4 ? '<b>Heuristik</b> adalah tebakan cerdas yang mempercepat pencarian. Banyak sistem AI, dari navigasi peta sampai AI pemain catur, menimbang kecepatan dan ketepatan dengan mengatur seberapa besar mereka memercayai heuristiknya.'
+      : 'Pencarian rute adalah salah satu bidang AI paling awal. Aplikasi peta, robot gudang, dan karakter dalam gim memakai algoritma seperti Dijkstra dan A* untuk merencanakan jalan.',
+    ct: ['Algoritma','Abstraksi', L >= 3 ? 'Evaluasi' : 'Dekomposisi'], onRetry:() => { run = null; draw(); }, next: ok && L < 4 ? () => start(L + 1) : null });
+}
+return { id:'m3', icon:'🛵', color:'#2F8F9D', title:'Rute Tercepat', idea:'Algoritma pencarian: BFS, Dijkstra, A*', topics:'Graf, BFS, Dijkstra, A*, heuristik',
+  mount(el, lvl){ root = el; hdr = OB.frame(root, 'm3', { icon:'🛵', color:'#2F8F9D', title:'Rute Tercepat', current:() => L, onPick:start,
+    onHelp:() => OB.info('Cara bermain', '<p><b>BFS</b> memeriksa kotak lapis demi lapis dan menghitung jumlah langkah.</p><p style="margin-top:8px"><b>Dijkstra</b> selalu memeriksa kotak dengan waktu tempuh terkecil lebih dulu, sehingga memperhitungkan jalan macet.</p><p style="margin-top:8px"><b>A*</b> seperti Dijkstra, tetapi ditambah perkiraan jarak ke tujuan (jarak Manhattan) agar pencarian mengarah ke tujuan.</p><p style="margin-top:8px">Kotak biru menunjukkan kotak yang sudah diperiksa. Semakin sedikit, semakin hemat.</p>') });
+    start(lvl && OB.unlocked('m3', lvl) ? lvl : 1); }
+};
+})());
+
+/* ===== Misi 4: Halte Bus Sekolah ===== */
+GAMES.push((() => {
+function g4rng(seed){ let s=seed; return ()=> (s = s*16807 % 2147483647)/2147483647; }
+function g4normal(r){ let u=0,v=0; while(!u) u=r(); while(!v) v=r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+const G4PTS = (()=>{ const r=g4rng(4242), C=[[22,26],[76,22],[28,76],[80,74]], out=[]; C.forEach(([x,y],ci)=>{ for(let i=0;i<9;i++) out.push([Math.max(3,Math.min(97,x+7*g4normal(r))), Math.max(3,Math.min(97,y+7*g4normal(r)))]); }); return out; })();
+function assign(pts, cs){ return pts.map(p=>{ let b=0,bd=Infinity; cs.forEach((c,i)=>{ const d=(p[0]-c[0])**2+(p[1]-c[1])**2; if(d<bd){bd=d;b=i;} }); return b; }); }
+function inertia(pts, cs, a){ a=a||assign(pts,cs); return pts.reduce((s,p,i)=>s+(p[0]-cs[a[i]][0])**2+(p[1]-cs[a[i]][1])**2,0); }
+function update(pts, cs, a){ return cs.map((c,i)=>{ const m=pts.filter((_,j)=>a[j]===i); return m.length? [m.reduce((s,p)=>s+p[0],0)/m.length, m.reduce((s,p)=>s+p[1],0)/m.length] : c; }); }
+function kmeans(pts, cs, maxIt=50){ let a=assign(pts,cs), it=0; for(;it<maxIt;it++){ const nc=update(pts,cs,a), na=assign(pts,nc); const moved=nc.some((c,i)=>Math.hypot(c[0]-cs[i][0],c[1]-cs[i][1])>1e-6); cs=nc; a=na; if(!moved) break; } return { cs, a, it, J: inertia(pts,cs,a) }; }
+function initRandom(pts,k,r){ const idx=[]; while(idx.length<k){ const i=Math.floor(r()*pts.length); if(!idx.includes(i)) idx.push(i); } return idx.map(i=>pts[i].slice()); }
+function initPP(pts,k,r){ const cs=[pts[Math.floor(r()*pts.length)].slice()]; while(cs.length<k){ const d=pts.map(p=>Math.min(...cs.map(c=>(p[0]-c[0])**2+(p[1]-c[1])**2))); const S=d.reduce((a,b)=>a+b,0); let t=r()*S, i=0; for(;i<d.length;i++){ t-=d[i]; if(t<=0) break; } cs.push(pts[Math.min(i,pts.length-1)].slice()); } return cs; }
+function bestJ(pts,k){ const r=g4rng(99); let b=Infinity; for(let t=0;t<60;t++){ const res=kmeans(pts, initPP(pts,k,r)); if(res.J<b) b=res.J; } return b; }
+
+const P = G4PTS, BEST = {}; [1,2,3,4,5,6,7,8].forEach(k => BEST[k] = bestJ(P, k));
+const LAM = 1500, COLS = ['#2F6FD0','#D9503C','#3E9A4C','#8C5BD6','#E8892E','#1F8A8A','#C2558E','#6B7A2E'];
+const INFO = [
+  { t:'Letakkan halte', s:'Sekolah akan membangun <b>3 halte bus</b> untuk 36 rumah siswa (fiktif). Seret halte agar siswa tidak perlu berjalan jauh. Skor jarak = jumlah kuadrat jarak setiap rumah ke halte terdekat. Makin kecil, makin baik.' },
+  { t:'Algoritma k-means', s:'Komputer punya cara sistematis: <b>(1) tetapkan</b> setiap rumah ke halte terdekat, lalu <b>(2) pindahkan</b> setiap halte ke titik tengah rumah-rumahnya. Ulangi sampai halte tidak bergerak lagi. Jalankan langkahnya sendiri.' },
+  { t:'Berapa halte?', s:'Setiap halte membutuhkan biaya pembangunan <b>1.500</b> (dalam satuan skor). Biaya total = skor jarak + 1.500 × jumlah halte. Coba beberapa jumlah halte dan temukan yang paling hemat.' },
+  { t:'Awal yang menentukan', s:'Empat halte ditempatkan di posisi awal yang kurang baik. Jalankan k-means dan lihat hasilnya. Lalu coba posisi awal lain sampai skor jarak ≤ 1,05 × terbaik.' },
+];
+let L = 1, root, hdr, cs, a, phase, iters, mistakes, hist, tried, runs, drag = null;
+const fmt = v => Math.round(v).toLocaleString('id-ID');
+function start(n){
+  L = n; a = null; phase = 'assign'; iters = 0; mistakes = 0; hist = []; tried = {}; runs = 0;
+  cs = n === 1 ? [[15,85],[50,12],[88,88]] : n === 2 ? [[50,10],[50,50],[50,90]] : n === 3 ? [] : [[15,20],[30,30],[25,75],[50,50]];
+  if (n === 1) a = assign(P, cs);
+  OB.story(root, n, INFO[n-1].t, INFO[n-1].s); hdr.redraw(); draw();
+}
+const S = 5, OX = 20, OY = 10;
+function mapSvg(){
+  let g = `<rect x="${OX}" y="${OY}" width="500" height="500" rx="16" fill="#EEF5EC"/>`;
+  for (let i = 1; i < 5; i++) g += `<line x1="${OX + i * 100}" y1="${OY}" x2="${OX + i * 100}" y2="${OY + 500}" stroke="#DDE8DA" stroke-width="6"/><line x1="${OX}" y1="${OY + i * 100}" x2="${OX + 500}" y2="${OY + i * 100}" stroke="#DDE8DA" stroke-width="6"/>`;
+  if (a && cs.length) P.forEach((p, i) => g += `<line x1="${OX + p[0] * S}" y1="${OY + p[1] * S}" x2="${OX + cs[a[i]][0] * S}" y2="${OY + cs[a[i]][1] * S}" stroke="${COLS[a[i]]}" stroke-width="1.5" opacity=".45"/>`);
+  P.forEach((p, i) => { const col = a && cs.length ? COLS[a[i]] : '#8E9BAD'; g += `<rect x="${OX + p[0] * S - 7}" y="${OY + p[1] * S - 5}" width="14" height="11" fill="${col}"/><polygon points="${OX + p[0] * S - 9},${OY + p[1] * S - 4} ${OX + p[0] * S},${OY + p[1] * S - 12} ${OX + p[0] * S + 9},${OY + p[1] * S - 4}" fill="${col}"/>`; });
+  cs.forEach((c, i) => g += `<g class="halte" data-i="${i}" style="cursor:${L === 1 ? 'grab' : 'default'}"><circle cx="${OX + c[0] * S}" cy="${OY + c[1] * S}" r="18" fill="#fff" stroke="${COLS[i]}" stroke-width="6"/><text x="${OX + c[0] * S}" y="${OY + c[1] * S + 6}" font-size="17" font-weight="800" text-anchor="middle" fill="${COLS[i]}">🚏</text></g>`);
+  return `<svg class="plot" id="msvg" viewBox="0 0 540 520" role="img" aria-label="Peta rumah dan halte" style="touch-action:none">${g}</svg>`;
+}
+function draw(){
+  const b = root.querySelector('.board'); const J = cs.length && a ? inertia(P, cs, a) : null;
+  let side = '';
+  if (L === 1) side = `<h3>🚏 Tiga halte</h3><div id="mt"></div><p class="hint">Seret lingkaran halte. Garis tipis menghubungkan rumah ke halte terdekatnya.</p><div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="chk">✔ Tetapkan lokasi</button></div>`;
+  if (L === 2) side = `<h3>🔁 Jalankan k-means</h3><div class="actions" style="justify-content:flex-start"><button class="btn btn-soft" id="as">1 · Tetapkan rumah</button><button class="btn btn-soft" id="up">2 · Pindahkan halte</button></div>
+    <div class="metricrow"><div class="metric"><b>${iters}</b><span>putaran</span></div><div class="metric"><b>${J === null ? '–' : fmt(J)}</b><span>skor jarak</span></div><div class="metric"><b>${mistakes}</b><span>urutan keliru</span></div></div>
+    ${hist.length ? `<div style="background:var(--sky);border-radius:14px;padding:6px 10px">${OB.lineChart([{ name:'skor jarak', color:'#2F6FD0', data: hist, dots:true }], { ymin:0, xlabel:'putaran', label:'grafik skor', h:150, fmt: v => Math.round(v / 1000) + 'rb' })}</div>` : ''}
+    <p class="hint">Langkah berikutnya: <b>${phase === 'assign' ? 'tetapkan rumah' : 'pindahkan halte'}</b>.</p>`;
+  if (L === 3) { const ks = Object.keys(tried).map(Number).sort((x, y) => x - y);
+    side = `<h3>🔢 Jumlah halte</h3><div class="seg" id="ks">${[1,2,3,4,5,6,7,8].map(k => `<button data-k="${k}" class="${cs.length === k ? 'on' : ''}">${k}</button>`).join('')}</div>
+    ${cs.length ? `<div class="metricrow"><div class="metric"><b>${fmt(J)}</b><span>skor jarak</span></div><div class="metric"><b>${fmt(LAM * cs.length)}</b><span>biaya halte</span></div><div class="metric"><b>${fmt(J + LAM * cs.length)}</b><span>biaya total</span></div></div>` : '<p class="hint">Pilih jumlah halte. Komputer akan menjalankan k-means untuk jumlah itu.</p>'}
+    ${ks.length > 1 ? `<div style="background:var(--sky);border-radius:14px;padding:6px 10px"><table class="detail"><tr><th>Halte</th><th>Skor jarak</th><th>Biaya total</th></tr>${ks.map(k => `<tr><td>${k}</td><td>${fmt(tried[k])}</td><td><b>${fmt(tried[k] + LAM * k)}</b></td></tr>`).join('')}</table></div>` : ''}
+    <div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="chk" ${cs.length ? '' : 'disabled'}>✔ Pilih jumlah ini</button></div>`; }
+  if (L === 4) side = `<h3>🎲 Posisi awal</h3><div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="run">▶ Jalankan k-means</button><button class="btn btn-soft" id="rnd">🎲 Acak posisi awal</button><button class="btn btn-soft" id="pp">✨ Awal menyebar</button></div>
+    <div class="metricrow"><div class="metric"><b>${J === null ? '–' : fmt(J)}</b><span>skor jarak</span></div><div class="metric"><b>${fmt(BEST[4] * 1.05)}</b><span>target (≤)</span></div><div class="metric"><b>${runs}</b><span>kali dijalankan</span></div></div>
+    <p class="hint">“Awal menyebar” (k-means++) memilih halte awal yang saling berjauhan.</p>`;
+  b.innerHTML = `<div class="panel" style="display:flex;justify-content:center">${mapSvg()}</div><div class="panel col">${side}</div>`;
+  if (L === 1) {
+    const mt = () => { const J = inertia(P, cs, a), r = J / BEST[3]; b.querySelector('#mt').innerHTML = `<div class="metricrow"><div class="metric"><b>${fmt(J)}</b><span>skor jarak</span></div><div class="metric"><b>${r.toFixed(2).replace('.', ',')}×</b><span>dibanding terbaik</span></div></div><div class="goalbar" style="margin-top:8px"><span class="goal ${r <= 1.15 ? 'ok' : ''}">${r <= 1.15 ? '✓ Kurang dari 1,15 × terbaik' : 'Target: ≤ 1,15 × terbaik'}</span></div>`; };
+    mt(); const svg = b.querySelector('#msvg');
+    const toXY = ev => { const r = svg.getBoundingClientRect(); return [Math.max(0, Math.min(100, ((ev.clientX - r.left) / r.width * 540 - OX) / S)), Math.max(0, Math.min(100, ((ev.clientY - r.top) / r.height * 520 - OY) / S))]; };
+    svg.onpointerdown = ev => { const g = ev.target.closest('.halte'); if (!g) return; drag = +g.dataset.i; svg.setPointerCapture(ev.pointerId); };
+    svg.onpointermove = ev => { if (drag === null) return; cs[drag] = toXY(ev); a = assign(P, cs); const keep = drag; b.querySelector('.panel').innerHTML = mapSvg(); start1Rebind(b, mt); drag = keep; mt(); };
+    b.querySelector('#chk').onclick = report;
+  }
+  if (L === 2) {
+    b.querySelector('#as').onclick = () => { if (phase !== 'assign') { mistakes++; return OB.toast('Halte harus dipindahkan dulu ke tengah kelompoknya.'); } a = assign(P, cs); phase = 'update'; hist.push(inertia(P, cs, a)); draw(); };
+    b.querySelector('#up').onclick = () => { if (phase !== 'update') { mistakes++; return OB.toast(a ? 'Tetapkan dulu rumah ke halte terdekat yang baru.' : 'Tetapkan dulu setiap rumah ke halte terdekat.'); }
+      const nc = update(P, cs, a), moved = nc.some((c, i) => Math.hypot(c[0] - cs[i][0], c[1] - cs[i][1]) > 1e-6); cs = nc; iters++; phase = 'assign'; hist.push(inertia(P, cs, a));
+      if (!moved) { draw(); setTimeout(report, 400); } else draw(); };
+  }
+  if (L === 3) {
+    b.querySelectorAll('#ks button').forEach(x => x.onclick = () => { const k = +x.dataset.k; const r = OB.rng(31 + k); let best = null; for (let t = 0; t < 12; t++) { const res = kmeans(P, initPP(P, k, r)); if (!best || res.J < best.J) best = res; } cs = best.cs; a = best.a; tried[k] = best.J; runs++; draw(); });
+    b.querySelector('#chk').onclick = report;
+  }
+  if (L === 4) {
+    const r = OB.rng(2026 + runs * 13);
+    b.querySelector('#rnd').onclick = () => { cs = initRandom(P, 4, OB.rng(Date.now() % 100000 + 1)); a = null; draw(); };
+    b.querySelector('#pp').onclick = () => { cs = initPP(P, 4, OB.rng(Date.now() % 100000 + 3)); a = null; draw(); };
+    b.querySelector('#run').onclick = () => { const res = kmeans(P, cs); runs++; let k = 0; const frames = []; let c2 = cs, a2 = assign(P, c2); frames.push([c2, a2]);
+      for (let i = 0; i < res.it + 1; i++) { c2 = update(P, c2, a2); a2 = assign(P, c2); frames.push([c2, a2]); }
+      const tick = () => { [cs, a] = frames[k]; draw(); k++; if (k < frames.length) setTimeout(tick, 350); else setTimeout(report, 500); }; tick(); };
+  }
+}
+function start1Rebind(b, mt){ /* garis dan rumah digambar ulang; event tetap di elemen svg baru */
+  const svg = b.querySelector('#msvg'), toXY = ev => { const r = svg.getBoundingClientRect(); return [Math.max(0, Math.min(100, ((ev.clientX - r.left) / r.width * 540 - OX) / S)), Math.max(0, Math.min(100, ((ev.clientY - r.top) / r.height * 520 - OY) / S))]; };
+  svg.onpointerdown = ev => { const g = ev.target.closest('.halte'); if (!g) return; drag = +g.dataset.i; svg.setPointerCapture(ev.pointerId); };
+  svg.onpointermove = ev => { if (drag === null) return; cs[drag] = toXY(ev); a = assign(P, cs); const keep = drag; b.querySelector('.panel').innerHTML = mapSvg(); start1Rebind(b, mt); drag = keep; mt(); };
+  svg.onpointerup = svg.onpointercancel = () => { drag = null; };
+}
+document.addEventListener('pointerup', () => { drag = null; });
+function report(){
+  let stars = 0, what = [], ok = false, metrics;
+  const J = a ? inertia(P, cs, a) : Infinity;
+  if (L === 1) { const r = J / BEST[3]; ok = r <= 1.4; stars = r <= 1.05 ? 3 : r <= 1.15 ? 2 : r <= 1.4 ? 1 : 0;
+    metrics = [[fmt(J), 'skor jarakmu'], [fmt(BEST[3]), 'skor terbaik'], [r.toFixed(2).replace('.', ',') + '×', 'perbandingan']];
+    what = [r <= 1.15 ? 'Halte-haltemu berada dekat titik tengah kelompok rumah.' : 'Ada kelompok rumah yang terlalu jauh dari halte.', 'Skor memakai kuadrat jarak, sehingga satu rumah yang sangat jauh menambah skor jauh lebih besar daripada beberapa rumah yang agak jauh.', 'Perhatikan: peta ini sebenarnya punya empat kelompok rumah. Dengan tiga halte, ada dua kelompok yang harus berbagi.']; }
+  if (L === 2) { ok = true; stars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
+    metrics = [[iters, 'putaran sampai stabil'], [fmt(J), 'skor jarak akhir'], [mistakes, 'urutan keliru']];
+    what = [`Halte berhenti bergerak setelah ${iters} putaran. Skor jarak turun dari ${fmt(hist[0])} ke ${fmt(J)}.`, 'Setiap putaran, skor jarak tidak pernah naik: langkah “tetapkan” dan “pindahkan” masing-masing hanya bisa memperbaiki atau mempertahankan skor.', 'Algoritma ini disebut <b>k-means</b>. Komputer tidak diberi tahu kelompok mana yang benar; ia menemukan kelompoknya sendiri dari data.']; }
+  if (L === 3) { const k = cs.length, tot = J + LAM * k, best = Math.min(...[1,2,3,4,5,6,7,8].map(q => BEST[q] + LAM * q)); ok = k === 4; stars = ok ? (runs <= 4 ? 3 : 2) : 0;
+    metrics = [[k, 'halte dipilih'], [fmt(tot), 'biaya totalmu'], [fmt(best), 'biaya total terkecil']];
+    what = [`Dengan ${k} halte, skor jarak ${fmt(J)} dan biaya total ${fmt(tot)}.`, 'Menambah halte selalu mengurangi skor jarak, tetapi setelah empat halte penurunannya kecil sekali dibanding biaya halte baru. Titik “siku” ini disebut <b>metode siku</b> (<i>elbow method</i>).', ok ? 'Empat halte cocok dengan empat kelompok rumah yang memang ada di peta.' : 'Bandingkan biaya total di tabel untuk beberapa jumlah halte.']; }
+  if (L === 4) { const r = J / BEST[4]; ok = r <= 1.05; stars = ok ? (runs <= 2 ? 3 : runs <= 4 ? 2 : 1) : 0;
+    metrics = [[fmt(J), 'skor jarak'], [fmt(BEST[4]), 'skor terbaik'], [runs, 'kali dijalankan']];
+    what = [ok ? 'K-means menemukan pembagian terbaik: satu halte untuk setiap kelompok rumah.' : `Skor ${r.toFixed(1).replace('.', ',')} × terbaik. Dua halte berebut satu kelompok, sementara dua kelompok lain terpaksa berbagi satu halte.`, 'K-means hanya memperbaiki keadaan sedikit demi sedikit, sehingga bisa terjebak di <b>optimum lokal</b>: tidak ada langkah kecil yang lebih baik, padahal ada susunan lain yang jauh lebih baik.', 'Solusinya: jalankan beberapa kali dengan posisi awal berbeda, atau pilih posisi awal yang menyebar (k-means++).']; }
+  if (stars) OB.save('m4', L, stars);
+  OB.result({ stars, title: ok ? (stars === 3 ? 'Halte yang efisien!' : 'Berhasil!') : 'Belum optimal', subtitle:`Level ${L}: ${INFO[L-1].t}`, metrics, what,
+    ai: L === 4 ? 'Banyak algoritma AI, termasuk pelatihan jaringan saraf, bisa terjebak di optimum lokal. Karena itu peneliti mencoba banyak titik awal dan teknik inisialisasi yang cerdas.'
+      : 'Inilah <b>pembelajaran tanpa pengawasan</b> (<i>unsupervised learning</i>): AI mencari pola tanpa label jawaban. Pengelompokan dipakai untuk segmentasi pelanggan, mengelompokkan berita, sampai merencanakan lokasi fasilitas umum.',
+    ct: ['Algoritma','Pengenalan pola', L >= 3 ? 'Evaluasi' : 'Abstraksi'], onRetry:() => { if (L === 2) start(2); }, next: ok && L < 4 ? () => start(L + 1) : null });
+}
+return { id:'m4', icon:'🚏', color:'#3E9A4C', title:'Halte Bus Sekolah', idea:'Pengelompokan tanpa label: k-means', topics:'Unsupervised learning, k-means, metode siku, optimum lokal',
+  mount(el, lvl){ root = el; hdr = OB.frame(root, 'm4', { icon:'🚏', color:'#3E9A4C', title:'Halte Bus Sekolah', current:() => L, onPick:start,
+    onHelp:() => OB.info('Cara bermain', '<p>Setiap rumah kecil adalah rumah seorang siswa. Warnanya menunjukkan halte terdekat.</p><p style="margin-top:10px"><b>Skor jarak</b> = jumlah kuadrat jarak setiap rumah ke halte terdekatnya. Semakin kecil, semakin dekat siswa ke halte.</p><p style="margin-top:10px">Algoritma <b>k-means</b> mengulang dua langkah: tetapkan rumah ke halte terdekat, lalu pindahkan halte ke titik tengah rumah-rumahnya.</p>') });
+    start(lvl && OB.unlocked('m4', lvl) ? lvl : 1); }
+};
+})());
+
+/* ===== Misi 5: Mata Komputer ===== */
+GAMES.push((() => {
+const IMG = {
+  V2:['........','..#.....','..#.....','..#.....','..#.....','..#.....','..#.....','........'],
+  V5:['........','.....#..','.....#..','.....#..','.....#..','.....#..','.....#..','........'],
+  H5:['........','........','........','........','........','.######.','........','........'],
+  H2:['........','........','.######.','........','........','........','........','........'],
+  D: ['........','.#......','..#.....','...#....','....#...','.....#..','......#.','........'],
+  A: ['........','......#.','.....#..','....#...','...#....','..#.....','.#......','........'],
+  P1:['...#....','...#....','...#....','#######.','...#....','...#....','...#....','........'],
+  P2:['........','....#...','....#...','....#...','.#######','....#...','....#...','....#...'],
+  Q: ['........','.##.....','.##.....','........','.....##.','.....##.','........','........'],
+};
+const px = (im, r, c) => IMG[im][r][c] === '#' ? 1 : 0;
+function conv(im, f){ const out = []; for (let r = 0; r < 6; r++) { const row = []; for (let c = 0; c < 6; c++) { let s = 0; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) s += px(im, r + i, c + j) * f[i][j]; row.push(s); } out.push(row); } return out; }
+const resp = (im, f) => Math.max(...conv(im, f).flat());
+
+const FV = [[-1,1,-1],[-1,1,-1],[-1,1,-1]];
+const QS = [['V2', 1, 1], ['H5', 3, 1], ['P1', 2, 2]];
+const INFO = [
+  { t:'Gambar adalah angka', s:'Bagi komputer, gambar hanyalah kotak-kotak angka: <b>1</b> untuk piksel gelap, <b>0</b> untuk terang. <b>Filter</b> 3×3 digeser di atas gambar; di setiap posisi, angka gambar dikalikan angka filter lalu dijumlahkan. Hitung hasilnya.' },
+  { t:'Detektor garis tegak', s:'Rancang filter sendiri. Ketuk kotak filter untuk mengganti nilainya (0 → 1 → −1). Target: respons terbesar pada garis <b>tegak ≥ 3</b>, tetapi pada garis <b>datar ≤ 1</b>.' },
+  { t:'Detektor garis miring', s:'Sekarang buat filter yang hanya “menyala” untuk garis miring <b>turun ke kanan (\\)</b>. Target: respons garis \\ ≥ 3, sedangkan garis / dan garis tegak ≤ 1.' },
+  { t:'Mengenali bentuk', s:'Pakai <b>dua filter</b>. Mesin menyatakan “ada garis tegak” bila respons filter A ≥ 3, dan “ada garis datar” bila respons filter B ≥ 3. Tegak saja = |, datar saja = —, keduanya = +, tidak keduanya = ?. Kenali ketujuh gambar dengan benar.' },
+];
+const TESTS = { 2: [['V2', '≥3'], ['H5', '≤1']], 3: [['D', '≥3'], ['A', '≤1'], ['V2', '≤1']], 4: [['V2','|'],['V5','|'],['H2','—'],['H5','—'],['P1','+'],['P2','+'],['Q','?']] };
+let L = 1, root, hdr, F, F2, sel, hov, qi, score, answers, tries;
+const zero = () => [[0,0,0],[0,0,0],[0,0,0]];
+function start(n){ L = n; F = zero(); F2 = zero(); sel = n === 1 ? QS[0][0] : TESTS[n][0][0]; hov = n === 1 ? [QS[0][1], QS[0][2]] : null; qi = 0; score = 0; answers = []; tries = 0; OB.story(root, n, INFO[n-1].t, INFO[n-1].s); hdr.redraw(); draw(); }
+function imgSvg(im, f, h){
+  const cs = 44, fm = conv(im, f); let g = '';
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { const v = px(im, r, c); g += `<rect x="${c * cs + 1}" y="${r * cs + 1}" width="${cs - 2}" height="${cs - 2}" rx="5" fill="${v ? '#1E2E5C' : '#F2F5F9'}"/><text x="${c * cs + cs / 2}" y="${r * cs + cs / 2 + 6}" font-size="16" text-anchor="middle" fill="${v ? '#fff' : '#B0B8C8'}">${v}</text>`; }
+  if (h) g += `<rect x="${h[1] * cs}" y="${h[0] * cs}" width="${cs * 3}" height="${cs * 3}" fill="none" stroke="#E8B23A" stroke-width="5" rx="8"/>`;
+  const ox = 8 * cs + 30, fc = 44, mx = Math.max(1, ...fm.flat().map(Math.abs));
+  if (L > 1) g += `<text x="${ox + 3 * fc}" y="-8" font-size="15" font-weight="700" text-anchor="middle" fill="#1E2E5C">peta fitur (hasil filter)</text>`;
+  if (L > 1) for (let r = 0; r < 6; r++) for (let c = 0; c < 6; c++) { const v = fm[r][c], t = Math.abs(v) / mx;
+    const col = v > 0 ? `rgba(232,178,58,${0.15 + t * 0.85})` : v < 0 ? `rgba(47,111,208,${0.12 + t * 0.6})` : '#F2F5F9';
+    g += `<rect class="fmc" data-r="${r}" data-c="${c}" x="${ox + c * fc + 1}" y="${r * fc + 1}" width="${fc - 2}" height="${fc - 2}" rx="5" fill="${col}" stroke="${h && h[0] === r && h[1] === c ? '#1E2E5C' : 'none'}" stroke-width="3"/><text x="${ox + c * fc + fc / 2}" y="${r * fc + fc / 2 + 6}" font-size="15" font-weight="700" text-anchor="middle" fill="#1E2E5C" pointer-events="none">${v}</text>`; }
+  return `<svg class="plot" viewBox="0 -20 ${ox + 6 * fc + 4} ${8 * cs + 24}" role="img" aria-label="Gambar dan peta fitur">${g}</svg>`;
+}
+function filterEd(f, id, label){
+  return `<div><p style="font-weight:700;color:var(--navy);margin-bottom:6px">${label}</p><div style="display:grid;grid-template-columns:repeat(3,56px);gap:6px" id="${id}">${f.flat().map((v, k) => `<button data-k="${k}" style="height:56px;border-radius:12px;border:2px solid var(--line);font-weight:800;font-size:1.2em;background:${v > 0 ? '#E8B23A' : v < 0 ? '#2F6FD0' : '#fff'};color:${v < 0 ? '#fff' : 'var(--navy)'}">${v}</button>`).join('')}</div></div>`;
+}
+function bindFilter(b, id, f){ b.querySelectorAll(`#${id} button`).forEach(x => x.onclick = () => { const k = +x.dataset.k, i = Math.floor(k / 3), j = k % 3; f[i][j] = f[i][j] === 0 ? 1 : f[i][j] === 1 ? -1 : 0; draw(); }); }
+function classify(im){ const v = resp(im, F) >= 3, h = resp(im, F2) >= 3; return v && h ? '+' : v ? '|' : h ? '—' : '?'; }
+function calcText(im, f, r, c){ const parts = []; let s = 0; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { const p = px(im, r + i, c + j), w = f[i][j]; s += p * w; if (p && w) parts.push(`1×${w}`); } return `${parts.length ? parts.join(' + ') : 'semua perkalian bernilai 0'} = <b>${s}</b>`; }
+function draw(){
+  const b = root.querySelector('.board');
+  if (L === 1) {
+    if (qi >= QS.length) return report();
+    const [im, r, c] = QS[qi], right = conv(im, FV)[r][c];
+    const opts = [...new Set([right, right + 2, right - 2, -right || 1])].slice(0, 4).sort((x, y) => x - y);
+    b.innerHTML = `<div class="panel col" style="justify-content:center">${imgSvg(im, FV, [r, c])}</div><div class="panel col">
+      <p class="pill" style="align-self:flex-start">Soal ${qi + 1} dari ${QS.length}</p>${filterEd(FV, 'fx', 'Filter (detektor garis tegak)')}
+      <p class="big" style="font-weight:800;color:var(--navy)">Berapa hasil filter di kotak kuning?</p><p class="hint">Kalikan setiap angka gambar di kotak kuning dengan angka filter di posisi yang sama, lalu jumlahkan.</p>
+      <div class="q-opts" id="op">${opts.map(o => `<button data-v="${o}">${o}</button>`).join('')}</div><div id="fb"></div></div>`;
+    b.querySelectorAll('#fx button').forEach(x => x.disabled = true);
+    b.querySelectorAll('#op button').forEach(x => x.onclick = () => {
+      const ok = +x.dataset.v === right; if (ok) score++; answers.push(ok);
+      b.querySelectorAll('#op button').forEach(y => { y.disabled = true; if (+y.dataset.v === right) y.classList.add('right'); else if (y === x) y.classList.add('wrong'); });
+      b.querySelector('#fb').innerHTML = `<p style="margin-top:8px">${calcText(im, FV, r, c)}</p><div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="nx">${qi + 1 < QS.length ? 'Soal berikutnya' : 'Lihat hasil'}</button></div>`;
+      b.querySelector('#nx').onclick = () => { qi++; draw(); };
+    });
+    return;
+  }
+  const T = TESTS[L];
+  const list = T.map(([im, tgt]) => {
+    if (L === 4) { const cl = classify(im); return `<button class="thumb ${im === sel ? 'on' : ''}" data-im="${im}">${miniSvg(im)}<span>mesin: <b>${cl}</b> · benar: ${tgt} <span class="${cl === tgt ? 'ok' : 'no'}">${cl === tgt ? '✓' : '✗'}</span></span></button>`; }
+    const v = resp(im, F), ok = tgt === '≥3' ? v >= 3 : v <= 1;
+    return `<button class="thumb ${im === sel ? 'on' : ''}" data-im="${im}">${miniSvg(im)}<span>respons <b>${v}</b> · target ${tgt} <span class="${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'}</span></span></button>`;
+  }).join('');
+  b.innerHTML = `<div class="panel col" style="justify-content:center">${imgSvg(sel, L === 4 && hov && hov.f2 ? F2 : F, hov)}<p class="hint" id="calc">${hov ? calcText(sel, hov.f2 ? F2 : F, hov[0], hov[1]) : 'Arahkan atau ketuk kotak peta fitur untuk melihat perhitungannya.'}</p></div>
+    <div class="panel col"><div style="display:flex;gap:18px;flex-wrap:wrap">${filterEd(F, 'fa', L === 4 ? 'Filter A (garis tegak)' : 'Filtermu')}${L === 4 ? filterEd(F2, 'fb2', 'Filter B (garis datar)') : ''}</div>
+    ${L === 4 ? `<div class="seg" id="view"><button class="${!(hov && hov.f2) ? 'on' : ''}" data-f="a">Lihat peta filter A</button><button class="${hov && hov.f2 ? 'on' : ''}" data-f="b">Lihat peta filter B</button></div>` : ''}
+    <h3 style="margin-top:4px">🖼 Gambar uji</h3><div class="thumbs">${list}</div>
+    <div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="chk">✔ Uji filter</button></div></div>`;
+  bindFilter(b, 'fa', F); if (L === 4) bindFilter(b, 'fb2', F2);
+  b.querySelectorAll('.thumb').forEach(x => x.onclick = () => { sel = x.dataset.im; hov = null; draw(); });
+  b.querySelectorAll('.fmc').forEach(x => { const f = () => { const f2 = hov && hov.f2; hov = [+x.dataset.r, +x.dataset.c]; hov.f2 = f2; draw(); }; x.onclick = f; });
+  if (L === 4) b.querySelectorAll('#view button').forEach(x => x.onclick = () => { hov = hov ? [hov[0], hov[1]] : [0, 0]; hov.f2 = x.dataset.f === 'b'; draw(); });
+  b.querySelector('#chk').onclick = report;
+}
+function miniSvg(im){ let g = ''; for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (px(im, r, c)) g += `<rect x="${c * 6}" y="${r * 6}" width="6" height="6" fill="#1E2E5C"/>`; return `<svg viewBox="0 0 48 48" width="40" height="40" style="background:#F2F5F9;border-radius:6px">${g}</svg>`; }
+function fstr(f){ return f.map(r => '[' + r.join(' ') + ']').join(' '); }
+function report(){
+  let stars = 0, ok = false, what = [], metrics;
+  if (L === 1) { stars = score === 3 ? 3 : score === 2 ? 2 : score === 1 ? 1 : 0; ok = stars > 0;
+    metrics = [[`${score} / 3`, 'jawaban tepat']];
+    what = ['Operasi “kalikan lalu jumlahkan” sambil menggeser filter ini disebut <b>konvolusi</b>.', 'Filter ini punya angka 1 di kolom tengah dan −1 di kiri-kanan. Hasilnya besar bila ada garis tegak tepat di tengah, dan kecil atau negatif bila ada piksel gelap di sisi kiri-kanan.', 'Mengulang perhitungan ini di semua posisi menghasilkan <b>peta fitur</b>: peta yang menunjukkan di mana pola itu ditemukan.']; }
+  else if (L < 4) { tries++; const T = TESTS[L], res = T.map(([im, tgt]) => { const v = resp(im, F); return { im, v, ok: tgt === '≥3' ? v >= 3 : v <= 1 }; }); ok = res.every(r => r.ok); stars = ok ? (tries <= 3 ? 3 : 2) : 0;
+    metrics = res.map(r => [r.v, `respons ${r.im === 'V2' ? 'garis tegak' : r.im === 'H5' ? 'garis datar' : r.im === 'D' ? 'garis \\' : 'garis /'}`]);
+    what = [`Filtermu: ${fstr(F)}.`, ok ? 'Filtermu memberi angka positif pada piksel yang sejalan dengan pola, dan angka negatif (atau 0) pada piksel di sekitarnya. Jadi ia hanya “menyala” bila polanya pas.' : 'Lihat gambar yang belum memenuhi target. Ketuk kotak peta fitur dengan angka terbesar untuk melihat piksel mana yang membuat respons terlalu besar atau terlalu kecil.',
+      L === 2 ? 'Nilai −1 di samping garis berfungsi sebagai “penghukum”: piksel gelap di samping mengurangi respons, sehingga garis datar tidak ikut menyala.' : 'Detektor diagonal butuh angka 1 di sepanjang diagonal. Garis / hanya menyentuh satu kotak diagonal itu.']; }
+  else { tries++; const res = TESTS[4].map(([im, tgt]) => ({ im, cl: classify(im), tgt })); const n = res.filter(r => r.cl === r.tgt).length; ok = n === 7; stars = ok ? (tries <= 3 ? 3 : 2) : n >= 5 ? 1 : 0;
+    metrics = [[`${n} / 7`, 'gambar dikenali'], [tries, 'kali uji']];
+    what = [`Filter A: ${fstr(F)}. Filter B: ${fstr(F2)}.`, 'Mesin tidak melihat “tanda tambah”. Ia hanya punya dua angka: seberapa kuat pola tegak dan pola datar ditemukan. Bentuk dikenali dari <b>kombinasi fitur</b>.', ok ? 'Gambar kotak-kotak tidak menyalakan kedua filter, jadi mesin dengan benar menjawab “bukan garis”.' : 'Periksa gambar bertanda ✗: filter mana yang menyala padahal tidak seharusnya, atau sebaliknya?']; }
+  if (stars) OB.save('m5', L, stars);
+  OB.result({ stars, title: ok ? (stars === 3 ? 'Mata komputer yang tajam!' : 'Berhasil!') : 'Filter belum tepat', subtitle:`Level ${L}: ${INFO[L-1].t}`, metrics, what,
+    ai: L === 4 ? 'Jaringan saraf konvolusi (CNN) menyusun ratusan filter dalam banyak lapisan: lapisan awal mengenali garis, lapisan berikutnya menggabungkannya menjadi sudut, bentuk, lalu wajah atau benda. Bedanya, filter itu <b>dipelajari sendiri</b> dari data, bukan dirancang manusia.'
+      : 'Inilah cara dasar AI “melihat”. <b>Jaringan saraf konvolusi</b> (CNN) memakai filter seperti ini untuk mengenali tulisan tangan, rambu lalu lintas, sampai penyakit pada foto rontgen.',
+    ct: ['Pengenalan pola','Abstraksi', L >= 3 ? 'Dekomposisi' : 'Algoritma'], onRetry:() => { if (L === 1) start(1); }, next: ok && L < 4 ? () => start(L + 1) : null });
+}
+return { id:'m5', icon:'👁', color:'#E8892E', title:'Mata Komputer', idea:'Bagaimana AI melihat: filter dan konvolusi', topics:'Piksel, konvolusi, peta fitur, CNN',
+  mount(el, lvl){ root = el; hdr = OB.frame(root, 'm5', { icon:'👁', color:'#E8892E', title:'Mata Komputer', current:() => L, onPick:start,
+    onHelp:() => OB.info('Cara bermain', '<p>Gambar 8×8 terdiri dari piksel bernilai 1 (gelap) dan 0 (terang). Filter 3×3 digeser ke 36 posisi.</p><p style="margin-top:10px">Di setiap posisi: kalikan piksel dengan angka filter yang bertumpuk, lalu jumlahkan. Hasilnya ditulis di <b>peta fitur</b>. Kuning = positif, biru = negatif.</p><p style="margin-top:10px"><b>Respons</b> = angka terbesar di peta fitur.</p>') });
+    start(lvl && OB.unlocked('m5', lvl) ? lvl : 1); }
+};
+})());
+
+/* ===== Peta, panduan, dan navigasi ===== */
+const POS = [[14, 58], [34, 30], [52, 62], [70, 30], [87, 60]];
+const GUIDE = {
+  m1: { meta:'Regresi linear, fungsi galat (MSE), permukaan galat, penurunan gradien, overfitting · Matematika: fungsi linear, kuadrat, konsep turunan',
+    lv:[['Menggeser kemiringan dan tinggi garis','Galat dan MSE sebagai ukuran “seberapa buruk” model'],['Mencari lembah di peta galat','Belajar = mencari parameter dengan galat terkecil'],['Penurunan gradien dengan laju belajar berbeda','Laju belajar terlalu kecil lambat, terlalu besar divergen'],['Memilih derajat polinomial','Data latih vs data uji; underfitting dan overfitting']],
+    read:['<b>MSE</b>: rata-rata kuadrat galat. Target level 1 ≤ 1,2 × minimum, level 2 ≤ 1,1 ×, level 3 ≤ 1,05 × dalam 30 langkah.','Level 3: laju belajar 0,08–0,12 mencapai target; 0,15 divergen.','Level 4: derajat 2 = 3 bintang, 3–4 = 2 bintang (setara tetapi lebih rumit), 7 = menghafal data latih.'],
+    disc:['Mengapa galat dikuadratkan, bukan sekadar dijumlahkan?','Apa padanan overfitting dalam cara belajar manusia?','Mengapa model AI besar tidak bisa “melihat” peta galatnya?'] },
+  m2: { meta:'Klasifikasi berbasis skor, matriks kebingungan, akurasi, presisi, recall, biaya kesalahan, keadilan antarkelompok · Matematika: peluang dan statistika',
+    lv:[['Mencapai akurasi ≥ 85%','TP, FP, TN, FN dan akurasi'],['Recall ≥ 95% dan presisi ≥ 70%','Trade-off presisi dan recall'],['Meminimalkan kerugian (FN = 10, FP = 1)','Ambang terbaik bergantung pada harga kesalahan'],['Dua desa dengan kualitas kamera berbeda','Satu ambang tidak adil; akar masalah ada di data']],
+    read:['<b>Presisi</b> = TP ÷ (TP + FP). <b>Recall</b> = TP ÷ (TP + FN). <b>FPR</b> = FP ÷ (FP + TN).','Tanda bergaris tebal di grafik adalah tebakan yang salah.','Level 4 hanya bisa diselesaikan dengan ambang terpisah; diskusikan kapan cara ini pantas dan kapan tidak.'],
+    disc:['Dalam kasus apa recall lebih penting daripada presisi, dan sebaliknya?','Siapa yang berhak menentukan harga sebuah kesalahan?','Apakah ambang berbeda untuk kelompok berbeda itu adil?'] },
+  m3: { meta:'Graf dan grid, BFS, Dijkstra, A*, heuristik dan bobotnya · Informatika: algoritma pencarian',
+    lv:[['Menggambar rute sendiri lalu dibandingkan dengan BFS','BFS menjamin rute terpendek pada jalan berbiaya sama'],['Jalan macet berbiaya 4','BFS mengabaikan biaya; Dijkstra memperhitungkannya'],['Batas 50 kotak diperiksa','Heuristik mengarahkan pencarian (A*)'],['Bobot heuristik, batas 40 kotak','Heuristik berlebihan bisa merusak jaminan rute tercepat']],
+    read:['<b>Waktu tempuh</b> rute dibandingkan dengan waktu tercepat (dihitung Dijkstra).','<b>Kotak diperiksa</b>: banyak kotak yang diambil dari antrean pencarian (biru di peta).','Level 4: bobot 1,5–2 memenuhi target; bobot ≥ 2,5 memberi rute lebih lambat.'],
+    disc:['Kapan kecepatan mencari lebih penting daripada hasil terbaik?','Apa heuristik yang kalian pakai sehari-hari?','Bagaimana aplikasi peta tahu ada jalan macet?'] },
+  m4: { meta:'Pembelajaran tanpa pengawasan, k-means, metode siku, optimum lokal, k-means++ · Matematika: jarak dan rata-rata',
+    lv:[['Menyeret 3 halte','Fungsi tujuan: jumlah kuadrat jarak'],['Menjalankan langkah k-means sendiri','Tetapkan dan pindahkan, ulangi sampai stabil'],['Memilih jumlah halte dengan biaya pembangunan','Metode siku: menimbang manfaat dan biaya'],['Posisi awal yang buruk','Optimum lokal; banyak percobaan atau k-means++']],
+    read:['<b>Skor jarak</b>: jumlah kuadrat jarak rumah ke halte terdekat (satuan peta).','Level 3: biaya total = skor jarak + 1.500 × jumlah halte; optimum di 4 halte.','Level 4: posisi awal bawaan berhenti di skor sekitar 4,4 × terbaik.'],
+    disc:['Apakah meminimalkan rata-rata jarak selalu adil bagi semua siswa?','Di mana lagi pengelompokan otomatis dipakai?','Bagaimana kalau ada sungai di tengah peta?'] },
+  m5: { meta:'Gambar sebagai angka, konvolusi, peta fitur, gabungan fitur, CNN · Matematika: perkalian dan penjumlahan matriks elemen demi elemen',
+    lv:[['Menghitung hasil filter di satu posisi','Konvolusi = kalikan lalu jumlahkan'],['Merancang detektor garis tegak','Bobot positif untuk pola, negatif untuk sekitarnya'],['Merancang detektor garis miring','Pola yang berbeda butuh filter berbeda'],['Dua filter untuk mengenali |, —, +, dan bukan garis','Bentuk dikenali dari kombinasi fitur']],
+    read:['<b>Respons</b> = angka terbesar di peta fitur.','Ketuk kotak peta fitur untuk melihat perhitungannya.','Contoh solusi level 2: [−1 1 −1] di ketiga baris.'],
+    disc:['Mengapa CNN sungguhan mempelajari filternya sendiri?','Apa risikonya bila AI pengenal gambar dilatih dengan foto yang tidak beragam?','Bagaimana manusia mengenali bentuk dibanding mesin?'] },
+};
+function renderHome(root){
+  let total = 0;
+  const st = GAMES.map((g, i) => { const s = [1,2,3,4].reduce((a, l) => a + OB.stars(g.id, l), 0); total += s; const [x, y] = POS[i];
+    return `<a class="station" href="#${g.id}" style="left:${x}%;top:${y}%" aria-label="Misi ${i+1}: ${g.title}. ${g.idea}. ${s} dari 12 bintang"><span class="disc" style="background:${g.color}"><span class="num">${i+1}</span>${g.icon}</span><span class="card"><b>${g.title}</b><span>${g.idea}</span><span class="st">★ ${s} / 12</span></span></a>`; }).join('');
+  const r = OB.rng(5); let stars = ''; for (let i = 0; i < 90; i++) stars += `<circle cx="${(r() * 1000).toFixed(0)}" cy="${(r() * 500).toFixed(0)}" r="${(r() * 1.8 + .4).toFixed(1)}" fill="#fff" opacity="${(r() * .6 + .2).toFixed(2)}"/>`;
+  const line = POS.map(([x, y]) => `${x * 10},${y * 5}`).join(' ');
+  root.innerHTML = `<div id="home"><header class="hero">${OB.bina}<div><h1>Observatorium Bina</h1><p>Lima misi untuk membedah cara kerja AI: belajar, menilai, mencari, mengelompokkan, dan melihat</p></div><div class="spacer"></div>
+    <div class="tools"><a class="btn btn-glass" href="#panduan"><span class="icon">📘</span> Panduan guru</a><button class="btn btn-main" id="full"><span class="icon">⛶</span> Layar penuh</button></div></header>
+    <main class="sky" aria-label="Peta misi"><svg class="lines" viewBox="0 0 1000 500" preserveAspectRatio="none" aria-hidden="true">${stars}<polyline points="${line}" fill="none" stroke="#E8B23A" stroke-width="2.5" stroke-dasharray="6 8" opacity=".7"/></svg>${st}</main>
+    <footer class="foot"><label><input type="checkbox" id="unlock" ${OB.state.unlockAll ? 'checked' : ''}> Mode guru: buka semua level</label><span>Total bintang: ${total} dari 60</span><button class="btn btn-glass" id="reset">Hapus kemajuan</button></footer></div>`;
+  root.querySelector('#full').onclick = OB.fullscreen;
+  root.querySelector('#unlock').onchange = e => { OB.state.unlockAll = e.target.checked; OB.persist(); };
+  root.querySelector('#reset').onclick = () => { if (confirm('Hapus semua bintang Observatorium Bina di perangkat ini?')) { OB.state.progress = {}; OB.persist(); renderHome(root); } };
+}
+function renderGuide(root){
+  const sec = GAMES.map((g, i) => { const d = GUIDE[g.id];
+    return `<section class="panel" style="display:grid;grid-template-columns:auto 1fr;gap:20px"><div style="width:84px;height:84px;border-radius:50%;background:${g.color};display:grid;place-items:center;font-size:44px">${g.icon}</div><div>
+      <h2 style="color:var(--navy);font-size:1.35em">${i+1}. ${g.title}</h2><p class="hint" style="margin:2px 0 8px">${d.meta}</p>
+      <table class="detail"><tr><th>Level</th><th>Tantangan</th><th>Yang dipelajari</th></tr>${d.lv.map((l, k) => `<tr><td>${k+1}</td><td>${l[0]}</td><td>${l[1]}</td></tr>`).join('')}</table>
+      <div class="explain" style="margin-top:12px"><div class="box"><h3>Cara membaca hasil</h3><ul>${d.read.map(x => `<li>${x}</li>`).join('')}</ul></div><div class="box ai"><h3>Pertanyaan diskusi</h3><ul style="margin:0;padding-left:1.1em">${d.disc.map(x => `<li>${x}</li>`).join('')}</ul></div></div></div></section>`; }).join('');
+  root.innerHTML = `<div class="app guide" style="height:auto;min-height:100vh"><div class="topbar"><a class="btn btn-ghost" href="#peta"><span class="icon">🔭</span> Peta</a><div class="title"><span class="badge" style="background:var(--gold)">📘</span>Panduan Guru</div><div class="spacer"></div><button class="btn btn-ghost" id="full" aria-label="Layar penuh"><span class="icon">⛶</span></button></div>
+    <div class="main" style="overflow:visible"><section class="intro" style="display:grid;grid-template-columns:1.4fr 1fr;gap:18px">
+      <div class="panel"><h3>Tentang Observatorium Bina</h3><p>Seri ketiga setelah Petualangan Bina (SD) dan Ekspedisi Bina (SMP). Lima misi untuk SMA membedah cara kerja AI dari dalam: bagaimana model <b>belajar</b> (galat dan gradien), bagaimana kinerjanya <b>dinilai</b> (presisi, recall, keadilan), bagaimana AI <b>mencari</b> solusi (A*), bagaimana AI <b>mengelompokkan</b> tanpa label (k-means), dan bagaimana AI <b>melihat</b> (konvolusi).</p>
+      <p style="margin-top:8px">Setiap misi punya empat level yang makin kompleks. Layar hasil menjelaskan angka capaian, apa yang terjadi, kaitan dengan AI sungguhan, dan pilar computational thinking yang dilatih.</p></div>
+      <div class="panel"><h3>Saran pemakaian</h3><ul><li>Urutan bebas; misi 1 → 2 cocok sebagai pengantar pembelajaran mesin.</li><li>Setiap misi bisa dibuka langsung dengan tautan, misalnya akhiran <b>#m3</b> untuk Rute Tercepat, atau <b>#m3-4</b> untuk level 4.</li><li>Kemajuan tersimpan di peramban perangkat ini saja. Tidak ada akun dan tidak ada data siswa yang dikirim.</li><li>Semua data, tempat, dan orang di dalam game bersifat fiktif.</li></ul></div></section>${sec}
+      <section class="note" style="background:#FFF4D9;border-radius:14px;padding:12px 16px"><b>Benang merah:</b> AI belajar dengan meminimalkan galat, dinilai dengan ukuran yang mencerminkan nilai-nilai kita, mencari dengan heuristik, menemukan pola tanpa label, dan melihat lewat fitur sederhana yang disusun berlapis. Setiap langkah melibatkan pilihan manusia.</section></div></div>`;
+  root.querySelector('#full').onclick = OB.fullscreen;
+}
+function route(){
+  const root = document.getElementById('root'), h = (location.hash || '#peta').slice(1);
+  document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'));
+  const [id, lv] = h.split('-'), g = GAMES.find(x => x.id === id);
+  document.body.style.overflow = h === 'panduan' ? 'auto' : 'hidden';
+  if (g) g.mount(root, +lv || 0); else if (h === 'panduan') renderGuide(root); else renderHome(root);
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+route();
+
+</script>
 </body>
 </html>

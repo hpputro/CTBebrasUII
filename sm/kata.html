@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mesin Kata Berikutnya · Ekspedisi Bina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{--accent:#2F8F9D}
+  .board{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);grid-template-rows:minmax(0,1fr);gap:18px;flex:1;min-height:0}
+  .side{display:flex;flex-direction:column;gap:10px;overflow:auto}
+  .story-card{border:2px solid var(--line);border-radius:14px;padding:10px 14px;background:#fff}
+  .story-card.off{opacity:.45}
+  .story-card h4{margin:0 0 4px;color:var(--navy);display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .story-card p{font-size:.88em;line-height:1.45}
+  .story-card mark{background:#FFE08A;border-radius:4px;padding:0 2px}
+  .story-card .sw{border:0;border-radius:999px;padding:4px 14px;font-weight:700;min-height:40px;background:var(--sky);color:var(--navy)}
+  .story-card .sw.on{background:var(--navy);color:#fff}
+  .big{font-size:1.25em;color:var(--navy);font-weight:800}
+  .bars{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  .bar{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:10px;font-size:.9em}
+  .bar .track{background:var(--sky);border-radius:999px;height:20px;overflow:hidden}
+  .bar .fill{background:var(--accent);height:100%;border-radius:999px}
+  .bar.pick .fill{background:var(--gold)}
+  .sentence{font-size:1.2em;font-weight:800;color:var(--navy);background:#FFF4D9;border-radius:14px;padding:10px 16px}
+  .sentence span{border-bottom:3px dotted var(--accent);cursor:help}
+  .rate{display:flex;gap:10px;flex-wrap:wrap}
+  .log{font-size:.88em}
+  .log div{padding:4px 0;border-bottom:1px dashed var(--line)}
+  @media (max-width:1000px){.board{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar"></div>
+  <div class="main">
+    <section class="story" id="story"></section>
+    <section class="board">
+      <div class="panel side"><h3>📚 Bacaan mesin (data latih)</h3><div id="corpus" class="side" style="overflow:visible"></div></div>
+      <div class="panel side" id="task"></div>
+    </section>
+  </div>
+</div>
+<script src="common.js"></script>
+<script src="kata_model.js"></script>
+<script>
+const ALL = CORPUS.map(c => c.id);
+const LEVELS = [
+  { title:'Tebak kata berikutnya', story:'Mesin Bina belajar menulis dengan cara sederhana: ia menghitung <b>kata apa yang biasanya muncul sesudah kata tertentu</b> di bacaannya. Tebak kata mana yang paling mungkin dipilih mesin.' },
+  { title:'Menghitung peluang', story:'Mesin tidak selalu memilih kata yang sama. Ia memakai <b>peluang</b>: semakin sering pasangan kata muncul, semakin besar peluangnya. Hitung peluangnya dari bacaan.' },
+  { title:'Lancar tetapi belum tentu benar', story:'Mesin hanya punya satu cerita. Aktifkan cerita lain, lalu suruh mesin menulis kalimat yang diawali kata yang berbeda. Periksa: apakah kalimatnya benar-benar ada di cerita?' },
+  { title:'Penggeser kreativitas', story:'AI generatif punya pengaturan “kreativitas” (<i>temperature</i>). Tulis dua kalimat di setiap pengaturan, lalu nilai: masuk akal atau aneh?' },
+];
+const Q1 = ['si','kancil','ke','di','guru'];
+const Q2 = [['kancil','melihat'],['ke','sungai'],['di','sungai'],['buku','ke']];
+let L = 1, active, qi, score, answers, model, rand, gens, checks, ratings, highlight = null;
+const $ = id => document.getElementById(id);
+const hdr = Bina.header({ game:'g3', icon:'✍️', title:'Mesin Kata Berikutnya', count:4, current:() => L, onPick:start, onHelp:help });
+function help(){ Bina.info('Cara bermain', `<p>Mesin membaca cerita-cerita pendek di sebelah kiri. Untuk setiap kata, ia mencatat kata apa yang muncul sesudahnya dan berapa kali.</p><p style="margin-top:10px">Saat menulis, mesin memilih kata berikutnya berdasarkan catatan itu, satu kata demi satu kata, sampai bertemu tanda titik.</p><p style="margin-top:10px">Ini versi mini dari cara kerja <b>model bahasa</b> seperti chatbot AI. Model sungguhan membaca miliaran kalimat dan melihat jauh lebih banyak kata sebelumnya.</p>`); }
+function start(n){
+  L = n; active = n === 3 ? ['kancil'] : ALL.slice(); qi = 0; score = 0; answers = []; gens = []; checks = []; ratings = []; highlight = null;
+  rand = Bina.rng(Date.now() % 100000 + 7); model = bigrams(active);
+  $('story').innerHTML = `${Bina.bina}<div><h2>Level ${n}: ${LEVELS[n-1].title}</h2><p>${LEVELS[n-1].story}</p></div>`;
+  hdr.redraw(); corpus(); task();
+}
+function corpus(){
+  $('corpus').innerHTML = CORPUS.map(c => {
+    const on = active.includes(c.id);
+    let txt = c.text.replace(/ \./g, '.');
+    if (highlight) { const re = new RegExp(`\\b(${highlight})( |\\.)`, 'g'); txt = txt.replace(re, '<mark>$1</mark>$2'); }
+    return `<div class="story-card ${on ? '' : 'off'}"><h4>${c.name}${L >= 3 ? `<button class="sw ${on ? 'on' : ''}" data-id="${c.id}">${on ? 'Dipakai' : 'Tidak dipakai'}</button>` : ''}</h4><p>${txt}</p></div>`;
+  }).join('');
+  $('corpus').querySelectorAll('.sw').forEach(b => b.onclick = () => {
+    const id = b.dataset.id; if (active.includes(id)) { if (active.length === 1) { Bina.toast('Mesin perlu minimal satu cerita.'); return; } active = active.filter(x => x !== id); } else active.push(id);
+    model = bigrams(active); corpus(); task();
+  });
+}
+function bars(dist, pick){ return `<div class="bars">${dist.map(e => `<div class="bar ${pick && e.w === pick ? 'pick' : ''}"><b>${e.w === '.' ? '(titik)' : e.w}</b><div class="track"><div class="fill" style="width:${Math.round(e.p*100)}%"></div></div><span>${e.c} dari ${e.tot} (${Math.round(e.p*100)}%)</span></div>`).join('')}</div>`; }
+function shuffle(a){ for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+// ---------- tugas ----------
+function task(){
+  const el = $('task');
+  if (L === 1) {
+    if (qi >= Q1.length) return report();
+    const w = Q1[qi], d = nextDist(model, w), right = d[0].w;
+    const pool = [...new Set(d.slice(1).map(e => e.w).concat(['sungai','kayu','buku','ikan','berlari','pasar','makan']))].filter(x => x !== right && x !== '.');
+    const opts = shuffle([right, ...shuffle(pool).slice(0, 3)]);
+    highlight = w; corpus();
+    el.innerHTML = `<p class="pill" style="align-self:flex-start">Soal ${qi+1} dari ${Q1.length}</p><p class="big">Setelah kata “${w}”, kata apa yang paling mungkin dipilih mesin?</p><p class="hint">Petunjuk: kata “${w}” sudah ditandai kuning di bacaan.</p>
+      <div class="q-opts" id="opts">${opts.map(o => `<button data-o="${o}">${o}</button>`).join('')}</div><div id="fb"></div>`;
+    el.querySelectorAll('#opts button').forEach(b => b.onclick = () => {
+      const ok = b.dataset.o === right; if (ok) score++; answers.push({ w, pick:b.dataset.o, right, ok });
+      el.querySelectorAll('#opts button').forEach(x => { x.disabled = true; if (x.dataset.o === right) x.classList.add('right'); else if (x === b) x.classList.add('wrong'); });
+      $('fb').innerHTML = `<h3 style="margin-top:12px">Catatan mesin untuk “${w}”</h3>${bars(d, right)}<div class="actions" style="justify-content:flex-start;margin-top:12px"><button class="btn btn-main" id="nx">${qi+1 < Q1.length ? 'Soal berikutnya' : 'Lihat hasil'}</button></div>`;
+      $('nx').onclick = () => { qi++; task(); };
+    });
+    return;
+  }
+  if (L === 2) {
+    if (qi >= Q2.length) return report();
+    const [w, n] = Q2[qi], d = nextDist(model, w), e = d.find(x => x.w === n), c = e.c, tot = e.tot;
+    const cands = [[c, tot], [Math.max(1, c - 1) === c ? c + 1 : c - 1, tot], [c, tot + 1], [1, tot], [c, tot - 1]].filter(([a, b]) => b > 0 && a <= b);
+    const uniq = []; cands.forEach(([a, b]) => { if (!uniq.some(([x, y]) => x === a && y === b)) uniq.push([a, b]); });
+    const opts = shuffle([uniq[0], ...shuffle(uniq.slice(1)).slice(0, 3)]);
+    highlight = w; corpus();
+    el.innerHTML = `<p class="pill" style="align-self:flex-start">Soal ${qi+1} dari ${Q2.length}</p><p class="big">Berapa peluang mesin memilih “${n}” setelah kata “${w}”?</p><p class="hint">Hitung: berapa kali “${w}” diikuti “${n}”, dibagi berapa kali “${w}” diikuti kata apa pun (termasuk titik).</p>
+      <div class="q-opts" id="opts">${opts.map(([a, b]) => `<button data-v="${a}/${b}">${a} dari ${b}</button>`).join('')}</div><div id="fb"></div>`;
+    el.querySelectorAll('#opts button').forEach(b => b.onclick = () => {
+      const ok = b.dataset.v === `${c}/${tot}`; if (ok) score++; answers.push({ w, n, pick:b.textContent, right:`${c} dari ${tot}`, ok });
+      el.querySelectorAll('#opts button').forEach(x => { x.disabled = true; if (x.dataset.v === `${c}/${tot}`) x.classList.add('right'); else if (x === b) x.classList.add('wrong'); });
+      $('fb').innerHTML = `<h3 style="margin-top:12px">Catatan mesin untuk “${w}”</h3>${bars(d, n)}<p style="margin-top:8px">Peluang “${n}” = ${c} ÷ ${tot} = <b>${Math.round(c/tot*100)}%</b></p><div class="actions" style="justify-content:flex-start;margin-top:12px"><button class="btn btn-main" id="nx">${qi+1 < Q2.length ? 'Soal berikutnya' : 'Lihat hasil'}</button></div>`;
+      $('nx').onclick = () => { qi++; task(); };
+    });
+    return;
+  }
+  if (L === 3) {
+    highlight = null;
+    const starts = ['si','bina','ibu','adik'].filter(s => model[s]);
+    const usedStarts = [...new Set(checks.map(c => c.start))];
+    el.innerHTML = `<p>Mulai kalimat dengan kata:</p><div class="seg" id="starts">${['si','bina','ibu','adik'].map(s => `<button data-s="${s}" ${model[s] ? '' : 'disabled style="opacity:.35"'}>${s}</button>`).join('')}</div>
+      <p class="hint">Kata yang pudar belum ada di bacaan mesin. Aktifkan cerita lain di sebelah kiri.</p>
+      <div id="gen"></div>
+      <p class="pill" style="align-self:flex-start">Diperiksa: ${checks.length} dari 4 kalimat · kata awal berbeda: ${usedStarts.length} dari 3</p>
+      <div class="log">${checks.map(c => `<div>“${c.text}” → ${c.inCorpus ? 'ada di cerita' : 'kalimat baru'} · jawabanmu ${c.ok ? '<span class="ok">tepat</span>' : '<span class="no">kurang tepat</span>'}</div>`).join('')}</div>`;
+    el.querySelectorAll('#starts button').forEach(b => b.onclick = () => {
+      if (!model[b.dataset.s]) return;
+      const g = generate(model, b.dataset.s, 'seimbang', rand), text = g.words.join(' ');
+      const inCorpus = CORPUS.filter(c => active.includes(c.id)).some(c => (' ' + c.text + ' ').includes(' ' + text + ' .'));
+      $('gen').innerHTML = `<div class="sentence">${g.words.map((w, i) => i === 0 ? w : `<span title="${Math.round(g.steps[i-1].pick.p*100)}% setelah “${g.steps[i-1].from}”">${w}</span>`).join(' ')}.</div>
+        <p style="margin-top:8px"><b>Apakah kalimat ini persis ada di salah satu cerita yang dipakai?</b></p><div class="rate"><button class="btn btn-soft" id="yes">Ya, ada</button><button class="btn btn-soft" id="no">Tidak, kalimat baru</button></div>`;
+      const ans = v => { checks.push({ start:b.dataset.s, text, inCorpus, ok: v === inCorpus }); if (checks.length >= 4 && new Set(checks.map(c => c.start)).size >= 3) report(); else task(); };
+      $('yes').onclick = () => ans(true); $('no').onclick = () => ans(false);
+    });
+    return;
+  }
+  if (L === 4) {
+    highlight = null;
+    const MODES = [['aman','Aman','selalu memilih kata dengan peluang terbesar'],['seimbang','Seimbang','memilih sesuai peluang'],['liar','Liar','peluang diratakan, kata jarang lebih sering terpilih']];
+    const done = m => ratings.filter(r => r.mode === m).length;
+    el.innerHTML = `<p>Pilih pengaturan kreativitas, tulis kalimat, lalu nilai hasilnya. Lakukan dua kali di setiap pengaturan.</p>
+      <div class="q-opts" style="grid-template-columns:1fr">${MODES.map(([m, n, d]) => `<button data-m="${m}" ${done(m) >= 2 ? 'disabled' : ''}><b>${n}</b> <small class="hint">(${d})</small> · ${done(m)}/2</button>`).join('')}</div><div id="gen"></div>`;
+    el.querySelectorAll('.q-opts button').forEach(b => b.onclick = () => {
+      const m = b.dataset.m, st = ['si','bina','ibu','adik'][Math.floor(rand() * 4)];
+      const g = generate(model, st, m, rand), text = g.words.join(' ');
+      const inCorpus = CORPUS.some(c => (' ' + c.text + ' ').includes(' ' + text + ' .'));
+      $('gen').innerHTML = `<p class="pill" style="margin-top:8px">${MODES.find(x => x[0] === m)[1]}</p><div class="sentence" style="margin-top:6px">${text}.</div><p style="margin-top:8px"><b>Menurutmu kalimat ini…</b></p>
+        <div class="rate"><button class="btn btn-soft" id="ok">👍 Masuk akal</button><button class="btn btn-soft" id="odd">🤔 Aneh / tidak sesuai</button></div>`;
+      const rate = v => { ratings.push({ mode:m, text, sensible:v, novel:!inCorpus }); if (ratings.length >= 6) report(); else task(); };
+      $('ok').onclick = () => rate(true); $('odd').onclick = () => rate(false);
+    });
+  }
+}
+function report(){
+  let stars = 0, what = [], metrics, detail = '', title;
+  if (L <= 2) {
+    const tot = L === 1 ? Q1.length : Q2.length;
+    stars = score === tot ? 3 : score >= tot - 1 ? 2 : score >= Math.ceil(tot / 2) ? 1 : 0;
+    metrics = [[`${score} / ${tot}`, 'jawaban tepat']];
+    detail = `<table class="detail"><tr><th>Soal</th><th>Jawabanmu</th><th>Jawaban mesin</th><th></th></tr>${answers.map(a => `<tr><td>${L === 1 ? `setelah “${a.w}”` : `“${a.n}” setelah “${a.w}”`}</td><td>${a.pick}</td><td>${a.right}</td><td class="${a.ok ? 'ok' : 'no'}">${a.ok ? '✓' : '✗'}</td></tr>`).join('')}</table>`;
+    what = L === 1 ? ['Mesin tidak memahami arti kata. Ia hanya menghitung pasangan kata yang pernah dibacanya.', 'Kata “si” selalu diikuti “kancil”, jadi mesin sangat yakin. Kata “ke” punya banyak kemungkinan, jadi mesin kurang yakin.', 'Cara ini disebut model <b>bigram</b>: menebak kata berikutnya dari satu kata sebelumnya.']
+      : ['Peluang = banyak kemunculan pasangan kata ÷ banyak kemunculan kata pertama.', 'Semakin banyak bacaan, semakin halus peluangnya. Bacaan yang sedikit membuat peluangnya “kasar” dan mudah berubah.', 'Mesin memakai peluang ini seperti mengundi: kata yang lebih sering punya “tiket undian” lebih banyak.'];
+    title = stars === 3 ? 'Kamu membaca pikiran mesin!' : stars ? 'Hampir semuanya tepat' : 'Coba hitung lagi dari bacaan';
+  }
+  if (L === 3) {
+    const ok = checks.filter(c => c.ok).length, novel = checks.filter(c => !c.inCorpus).length;
+    stars = ok === 4 ? 3 : ok >= 3 ? 2 : ok >= 2 ? 1 : 0;
+    metrics = [[`${ok} / 4`, 'pemeriksaan tepat'], [`${novel} / 4`, 'kalimat baru buatan mesin'], [active.length, 'cerita dipakai']];
+    detail = `<table class="detail"><tr><th>Kalimat mesin</th><th>Sebenarnya</th><th>Pemeriksaanmu</th></tr>${checks.map(c => `<tr><td>${c.text}.</td><td>${c.inCorpus ? 'ada di cerita' : 'kalimat baru'}</td><td class="${c.ok ? 'ok' : 'no'}">${c.ok ? 'tepat' : 'kurang tepat'}</td></tr>`).join('')}</table>`;
+    what = ['Dengan satu cerita saja, mesin hanya bisa memulai kalimat dengan kata yang ada di cerita itu dan cenderung mengulang kalimat yang sama.',
+      `Setelah cerita ditambah, mesin bisa menyambung potongan dari cerita berbeda. ${novel} dari 4 kalimat ternyata kalimat baru yang tidak pernah ada.`,
+      'Kalimat baru itu terdengar lancar, tetapi isinya bisa salah. Misalnya “ibu membeli ikan di sungai”, padahal di cerita ibu membeli ikan di pasar. Inilah bibit <b>halusinasi</b> AI.'];
+    title = stars === 3 ? 'Pemeriksa yang teliti!' : 'Kalimat lancar bisa menipu';
+  }
+  if (L === 4) {
+    const M = ['aman','seimbang','liar'], NM = { aman:'Aman', seimbang:'Seimbang', liar:'Liar' };
+    const rows = M.map(m => { const r = ratings.filter(x => x.mode === m); return { m, sens: r.filter(x => x.sensible).length, nov: r.filter(x => x.novel).length, n: r.length }; });
+    stars = 3;
+    metrics = rows.map(r => [`${r.sens}/${r.n}`, `masuk akal (${NM[r.m]})`]);
+    detail = `<table class="detail"><tr><th>Pengaturan</th><th>Kalimat</th><th>Penilaianmu</th><th>Baru?</th></tr>${ratings.map(r => `<tr><td>${NM[r.mode]}</td><td>${r.text}.</td><td>${r.sensible ? '👍' : '🤔'}</td><td>${r.novel ? 'baru' : 'ada di cerita'}</td></tr>`).join('')}</table>`;
+    what = ['Pengaturan <b>Aman</b> selalu memilih kata paling sering, jadi kalimatnya mudah ditebak dan sering berulang.',
+      'Pengaturan <b>Liar</b> memberi kesempatan lebih besar pada kata yang jarang, jadi kalimatnya lebih beragam tetapi lebih sering aneh.',
+      'Tidak ada pengaturan yang selalu terbaik. Untuk menjawab soal fakta, kreativitas rendah lebih aman. Untuk menulis puisi, kreativitas tinggi bisa lebih menarik.'];
+    title = 'Kamu sudah menguji tiga pengaturan';
+  }
+  if (stars) Bina.save('g3', L, stars);
+  Bina.result({ stars, title, subtitle:`Level ${L}: ${LEVELS[L-1].title}`, metrics, detail, what,
+    ai: L >= 3 ? 'AI generatif seperti chatbot <b>memprediksi kata berikutnya</b>, bukan memeriksa kebenaran. Karena itu jawabannya bisa terdengar meyakinkan padahal keliru. Selalu periksa ke sumber aslinya, misalnya dengan metode SIFT di game berikutnya.'
+      : 'Chatbot AI bekerja dengan ide yang sama: menebak kata (tepatnya potongan kata) berikutnya berdasarkan peluang. Bedanya, model sungguhan belajar dari miliaran kalimat dan memperhatikan banyak kata sebelumnya, bukan hanya satu.',
+    ct: L >= 3 ? ['Evaluasi','Pengenalan pola'] : ['Pengenalan pola','Abstraksi'],
+    next: stars && L < 4 ? () => start(L+1) : null });
+}
+start(1);
+</script>
+</body>
+</html>

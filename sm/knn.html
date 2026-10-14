@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab Tetangga Terdekat · Ekspedisi Bina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{--accent:#E07A5F}
+  .board{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:18px;flex:1;min-height:0}
+  .plotbox{display:flex;align-items:center;justify-content:center;min-height:0}
+  #plot{height:100%;max-height:100%;width:auto;max-width:100%;aspect-ratio:1}
+  .side{display:flex;flex-direction:column;gap:12px;overflow:auto}
+  .keyrow{display:flex;gap:16px;flex-wrap:wrap;font-size:.85em;color:var(--muted)}
+  .keyrow span{display:inline-flex;align-items:center;gap:6px}
+  .vote{font-size:1.05em;color:var(--navy);font-weight:700}
+  .choice{display:flex;gap:12px;flex-wrap:wrap}
+  .choice .btn{min-width:180px;justify-content:center}
+  .bH{background:#E07A5F;color:#fff}.bB{background:#3E9A4C;color:#fff}
+  .toggles{display:flex;gap:10px;flex-wrap:wrap}
+  .tg{border:2px solid var(--line);background:#fff;border-radius:999px;padding:6px 16px;min-height:46px;font-weight:700;color:var(--navy)}
+  .tg.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+  @media (max-width:1000px){.board{grid-template-columns:1fr}#plot{width:100%;height:auto}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar"></div>
+  <div class="main">
+    <section class="story" id="story"></section>
+    <section class="board">
+      <div class="panel plotbox"><svg id="plot" viewBox="0 0 600 600" role="img" aria-label="Bidang koordinat data serangga"></svg></div>
+      <div class="panel side" id="side"></div>
+    </section>
+  </div>
+</div>
+<script src="common.js"></script>
+<script src="knn_data.js"></script>
+<script>
+const COL = { H:'#E07A5F', B:'#3E9A4C' }, BG = { H:'#FBE3DC', B:'#E2F2E3' }, NAME = { H:'Hama', B:'Serangga baik' };
+const LEVELS = [
+  { title:'Berpikir seperti mesin', story:'Mesin Bina mengenali serangga dari panjang tubuh dan panjang antenanya. Untuk setiap titik baru, mesin melihat <b>3 tetangga terdekat</b> lalu memilih suara terbanyak. Tebak dulu jawaban mesin!' },
+  { title:'Memilih nilai k', story:'Ada beberapa data yang salah label (gangguan). Coba berbagai nilai <b>k</b>, yaitu banyaknya tetangga yang ditanya, lalu uji. Capai akurasi setidaknya 90%.' },
+  { title:'Titik penyusup', story:'Mesin kini hanya bertanya pada <b>1 tetangga</b>. Dua data latih diberi label keliru. Ketuk titik data latih untuk membalik labelnya, lalu uji sampai akurasinya 100%.' },
+  { title:'Skala yang berbeda', story:'Kali ini cirinya <b>panjang tubuh (mm)</b> dan <b>berat (mg)</b>. Angka berat jauh lebih besar, padahal belum tentu lebih penting. Atur cara mesin mengukur jarak sampai akurasinya minimal 90%.' },
+];
+let L = 1, lv, data, k, opt, step, agree, triedK, flips, revealed, lastPred = null;
+const $ = id => document.getElementById(id);
+const hdr = Bina.header({ game:'g1', icon:'🐞', title:'Lab Tetangga Terdekat', count:4, current:() => L, onPick:start, onHelp:help });
+function help(){ Bina.info('Cara bermain', `<p>Setiap titik adalah satu serangga. Segitiga merah = <b>hama</b>, lingkaran hijau = <b>serangga baik</b>. Belah ketupat bertanda tanya = serangga baru yang belum diketahui.</p><p style="margin-top:10px">Mesin menebak serangga baru dengan melihat <b>k</b> data latih yang paling dekat, lalu memilih label yang paling banyak. Warna latar menunjukkan wilayah tebakan mesin.</p><p style="margin-top:10px">Algoritma ini disebut <b>k-tetangga terdekat</b> (<i>k-nearest neighbors</i>).</p>`); }
+
+function start(n){
+  L = n; lv = KNN_DATA[n-1]; lv.test.forEach(t => delete t.res); data = lv.train.map(t => ({ ...t, orig:t.c })); k = lv.k || 3; opt = { scale: lv.scale };
+  step = 0; agree = 0; triedK = {}; flips = 0; revealed = false; lastPred = null;
+  $('story').innerHTML = `${Bina.bina}<div><h2>Level ${n}: ${LEVELS[n-1].title}</h2><p>${LEVELS[n-1].story}</p></div>`;
+  hdr.redraw(); side(); plot();
+}
+// ---------- gambar ----------
+const SX = 520, OX = 60, OY = 20;
+function px(x){ return OX + x / (lv.scale ? lv.scale.x : 10) * SX; }
+function py(y){ return OY + SX - y / (lv.scale ? lv.scale.y : 10) * SX; }
+function invx(X){ return (X - OX) / SX * (lv.scale ? lv.scale.x : 10); }
+function invy(Y){ return (OY + SX - Y) / SX * (lv.scale ? lv.scale.y : 10); }
+function shape(t, cls, extra = ''){
+  const X = px(t.x), Y = py(t.y), c = COL[t.c];
+  if (t.c === 'H') return `<polygon class="${cls}" ${extra} points="${X},${Y-11} ${X+10},${Y+7} ${X-10},${Y+7}" fill="${c}" stroke="#fff" stroke-width="2"/>`;
+  return `<circle class="${cls}" ${extra} cx="${X}" cy="${Y}" r="9" fill="${c}" stroke="#fff" stroke-width="2"/>`;
+}
+function plot(){
+  const s = $('plot'); let g = '';
+  const showMap = L > 1 || step >= lv.test.length;
+  if (showMap) {
+    const N = 24, cw = SX / N;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const q = { x: invx(OX + (i + .5) * cw), y: invy(OY + (j + .5) * cw) };
+      g += `<rect x="${OX + i*cw}" y="${OY + j*cw}" width="${cw+.5}" height="${cw+.5}" fill="${BG[knnPredict(data, q, k, opt).c]}"/>`;
+    }
+  } else g += `<rect x="${OX}" y="${OY}" width="${SX}" height="${SX}" fill="#F6F9FB"/>`;
+  g += `<rect x="${OX}" y="${OY}" width="${SX}" height="${SX}" fill="none" stroke="#C9D4DF" stroke-width="2"/>`;
+  const sc = lv.scale || { x:10, y:10 };
+  for (let t = 0; t <= 5; t++) {
+    g += `<text x="${OX + t/5*SX}" y="${OY + SX + 22}" font-size="18" text-anchor="middle" fill="#56607C">${Math.round(sc.x*t/5)}</text>`;
+    g += `<text x="${OX - 8}" y="${OY + SX - t/5*SX + 5}" font-size="18" text-anchor="end" fill="#56607C">${Math.round(sc.y*t/5)}</text>`;
+  }
+  g += `<text x="${OX + SX/2}" y="596" font-size="16" text-anchor="middle" fill="#1E2E5C" font-weight="700">Panjang tubuh (mm)</text>`;
+  g += `<text x="16" y="${OY + SX/2}" font-size="16" text-anchor="middle" fill="#1E2E5C" font-weight="700" transform="rotate(-90 16 ${OY + SX/2})">${lv.scale ? 'Berat (mg)' : 'Panjang antena (mm)'}</text>`;
+  // garis tetangga
+  if (lastPred) lastPred.forEach(({ q, nb }) => nb.forEach(n => { g += `<line x1="${px(q.x)}" y1="${py(q.y)}" x2="${px(n.t.x)}" y2="${py(n.t.y)}" stroke="#1E2E5C" stroke-width="2" stroke-dasharray="5 4" opacity=".7"/>`; }));
+  data.forEach((t, i) => { g += shape(t, 'pt', L === 3 ? `data-i="${i}" style="cursor:pointer"` : ''); });
+  lv.test.forEach((t, i) => {
+    const X = px(t.x), Y = py(t.y), cur = L === 1 && i === step;
+    let fill = '#fff', mark = '?';
+    if (t.res) { fill = COL[t.res.c]; mark = t.res.ok === undefined ? '' : t.res.ok ? '✓' : '✗'; }
+    g += `<rect x="${X-12}" y="${Y-12}" width="24" height="24" transform="rotate(45 ${X} ${Y})" fill="${fill}" stroke="${cur ? '#E8B23A' : '#1E2E5C'}" stroke-width="${cur ? 5 : 3}"/>`;
+    g += `<text x="${X}" y="${Y+6}" font-size="17" font-weight="800" text-anchor="middle" fill="${t.res ? '#fff' : '#1E2E5C'}">${mark}</text>`;
+    if (L === 1 && i > step) g = g; // belum muncul tetap ditampilkan samar
+  });
+  s.innerHTML = g;
+  if (L === 3) s.querySelectorAll('.pt').forEach(e => e.onclick = () => { const d = data[+e.dataset.i]; d.c = d.c === 'H' ? 'B' : 'H'; flips++; clearRes(); plot(); side(); });
+}
+function clearRes(){ lv.test.forEach(t => delete t.res); lastPred = null; revealed = false; }
+// ---------- panel samping ----------
+function key(){ return `<div class="keyrow"><span><svg width="18" height="18"><polygon points="9,1 17,15 1,15" fill="${COL.H}"/></svg>Hama</span><span><svg width="18" height="18"><circle cx="9" cy="9" r="7" fill="${COL.B}"/></svg>Serangga baik</span><span><svg width="18" height="18"><rect x="4" y="4" width="10" height="10" transform="rotate(45 9 9)" fill="#fff" stroke="#1E2E5C" stroke-width="2"/></svg>Serangga baru</span></div>`; }
+function side(){
+  const el = $('side');
+  if (L === 1) {
+    if (step >= lv.test.length) { el.innerHTML = key(); return; }
+    const t = lv.test[step];
+    el.innerHTML = `${key()}<h3>Serangga baru ke-${step+1} dari ${lv.test.length}</h3><p>Lihat titik yang bercincin kuning. Menurutmu, apa tebakan mesin dengan k = 3?</p>
+      <div class="choice"><button class="btn bH" id="cH">▲ Hama</button><button class="btn bB" id="cB">● Serangga baik</button></div><div id="fb"></div>`;
+    $('cH').onclick = () => answer('H'); $('cB').onclick = () => answer('B');
+    return;
+  }
+  let html = key();
+  if (lv.ks) html += `<h3>Nilai k (banyak tetangga)</h3><div class="seg" id="kseg">${lv.ks.map(v => `<button class="${v===k?'on':''}" data-k="${v}">${v}</button>`).join('')}</div>`;
+  if (L === 3) html += `<p class="pill">k = 1 · label dibalik: ${flips}×</p><p class="hint">Ketuk segitiga atau lingkaran yang mencurigakan untuk membalik labelnya.</p>`;
+  if (L === 4) html += `<h3>Cara mengukur jarak</h3><div class="toggles"><button class="tg ${opt.norm?'on':''}" id="tN">⚖️ Samakan skala</button><button class="tg ${opt.ignoreY?'on':''}" id="tI">🚫 Abaikan berat</button></div>
+    <p class="hint">Tanpa penyamaan skala, selisih berat 100 mg dianggap 100 kali lebih jauh daripada selisih panjang 1 mm.</p>`;
+  html += `<div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="run"><span class="icon">▶</span> Uji mesin</button></div><div id="live"></div>`;
+  el.innerHTML = html;
+  if (lv.ks) el.querySelectorAll('#kseg button').forEach(b => b.onclick = () => { k = +b.dataset.k; clearRes(); plot(); side(); });
+  if (L === 4) { $('tN').onclick = () => { opt.norm = !opt.norm; clearRes(); plot(); side(); }; $('tI').onclick = () => { opt.ignoreY = !opt.ignoreY; clearRes(); plot(); side(); }; }
+  $('run').onclick = test;
+}
+function answer(c){
+  const t = lv.test[step], r = knnPredict(data, t, 3, opt), ok = r.c === c;
+  if (ok) agree++;
+  t.res = { c: r.c }; lastPred = [{ q: t, nb: r.nb }]; plot();
+  $('fb').innerHTML = `<p class="vote" style="margin-top:10px">Tetangga terdekat: ${r.h} hama, ${r.b} serangga baik → mesin menebak <b>${NAME[r.c]}</b>.</p>
+    <p class="${ok?'ok':'no'}">${ok ? 'Tebakanmu sama dengan mesin!' : 'Tebakanmu berbeda dengan mesin.'}</p>
+    <div class="actions" style="justify-content:flex-start"><button class="btn btn-main" id="nx">${step+1 < lv.test.length ? 'Serangga berikutnya' : 'Lihat hasil'}</button></div>`;
+  document.querySelectorAll('#cH,#cB').forEach(b => b.disabled = true);
+  $('nx').onclick = () => { step++; lastPred = null; if (step >= lv.test.length) { plot(); side(); report1(); } else { plot(); side(); } };
+}
+function test(){
+  const preds = lv.test.map(t => { const r = knnPredict(data, t, k, opt); t.res = { c: r.c, ok: r.c === t.c }; return { q: t, nb: r.nb, ok: r.c === t.c, r }; });
+  lastPred = L === 4 || L === 3 ? preds.filter(p => !p.ok) : null; plot();
+  const right = preds.filter(p => p.ok).length, acc = Math.round(right / preds.length * 100);
+  const key2 = L === 4 ? `${opt.norm?'skala sama':'skala asli'}${opt.ignoreY?', tanpa berat':''}, k=${k}` : `k=${k}`;
+  triedK[key2] = acc;
+  $('live').innerHTML = `<p class="vote" style="margin-top:8px">Akurasi: ${right} dari ${preds.length} (${acc}%)</p>`;
+  setTimeout(() => report(preds, right, acc), 700);
+}
+function confusion(preds){
+  const m = { HH:0, HB:0, BH:0, BB:0 }; preds.forEach(p => m[p.q.c + p.r.c]++);
+  return `<table class="detail"><tr><th>Sebenarnya \\ Tebakan mesin</th><th>Hama</th><th>Serangga baik</th></tr>
+    <tr><td><b>Hama</b></td><td class="ok">${m.HH}</td><td class="no">${m.HB}</td></tr><tr><td><b>Serangga baik</b></td><td class="no">${m.BH}</td><td class="ok">${m.BB}</td></tr></table>`;
+}
+function report1(){
+  const stars = agree === 6 ? 3 : agree >= 5 ? 2 : agree >= 4 ? 1 : 0;
+  if (stars) Bina.save('g1', 1, stars);
+  Bina.result({ stars, title: agree >= 5 ? 'Kamu berpikir seperti mesin!' : 'Coba perhatikan tetangganya lagi', subtitle:'Level 1: Berpikir seperti mesin',
+    metrics:[[`${agree} / 6`, 'tebakan sama dengan mesin'], ['3', 'tetangga yang ditanya']],
+    what:['Mesin tidak punya aturan tentang serangga. Ia hanya mengukur <b>jarak</b> ke data latih dan mengikuti suara terbanyak dari 3 tetangga terdekat.',
+      'Titik di dekat perbatasan dua kelompok paling sulit ditebak, karena tetangganya bercampur.',
+      'Warna latar yang kini muncul adalah <b>wilayah keputusan</b> mesin: titik baru di wilayah merah akan ditebak hama.'],
+    ai:'Inilah <b>k-tetangga terdekat</b>, salah satu algoritma pembelajaran mesin paling sederhana. Rekomendasi film dan pengenalan tulisan tangan pernah memakai ide yang sama: cari yang paling mirip.',
+    ct:['Pengenalan pola','Abstraksi'], next:() => start(2) });
+}
+function report(preds, right, acc){
+  let stars = 0;
+  if (L === 2 || L === 4) stars = acc === 100 ? 3 : acc >= 90 ? 2 : (L === 4 && acc >= 80) ? 1 : 0;
+  if (L === 3) stars = acc === 100 ? (flips <= 2 ? 3 : 2) : 0;
+  if (stars) Bina.save('g1', L, stars);
+  const what = [];
+  if (L === 2) {
+    what.push(`Dengan k = ${k}, mesin benar ${right} dari ${preds.length}.`);
+    if (k === 1) what.push('Dengan k = 1, mesin hanya percaya pada satu tetangga. Bila tetangga itu data yang salah label, tebakannya ikut salah. Ini disebut <b>overfitting</b>: terlalu menuruti setiap detail data latih.');
+    else if (k >= 15) what.push(`Dengan k = ${k}, mesin bertanya pada hampir semua data, jadi kelompok jauh ikut “bersuara”. Wilayah keputusannya terlalu kasar (<b>underfitting</b>).`);
+    else what.push(`k = ${k} cukup besar untuk mengabaikan satu-dua data yang salah label, tetapi cukup kecil untuk tetap mendengar tetangga yang benar-benar dekat.`);
+    const tried = Object.entries(triedK).map(([a, b]) => `${a}: ${b}%`).join(', ');
+    what.push(`Nilai yang sudah kamu coba: ${tried}.`);
+  }
+  if (L === 3) {
+    const still = data.filter(d => d.c !== d.orig);
+    what.push(acc === 100 ? `Label penyusup sudah diperbaiki dengan ${flips} kali membalik.` : 'Masih ada tebakan yang salah. Garis putus-putus menunjukkan data latih yang dipakai untuk tebakan yang salah. Periksa labelnya.');
+    what.push('Dengan k = 1, satu data berlabel salah cukup untuk membuat seluruh wilayah kecil di sekitarnya keliru.');
+  }
+  if (L === 4) {
+    what.push(`Pengaturan: ${opt.norm ? 'skala disamakan' : 'skala asli'}${opt.ignoreY ? ', berat diabaikan' : ''}, k = ${k}. Akurasi ${acc}%.`);
+    if (!opt.norm && !opt.ignoreY) what.push('Dengan skala asli, mesin hampir hanya melihat <b>berat</b>, karena angkanya ratusan. Padahal berat hama dan serangga baik mirip. Garis putus-putus memperlihatkan tetangga yang “dekat” beratnya tetapi jauh panjangnya.');
+    if (opt.norm) what.push('Menyamakan skala (<b>normalisasi</b>) membuat panjang tubuh dan berat sama-sama dihitung adil.');
+    if (opt.ignoreY) what.push('Mengabaikan berat adalah <b>abstraksi</b>: membuang ciri yang tidak membantu membedakan kelompok.');
+  }
+  Bina.result({ stars, title: acc === 100 ? 'Mesin menebak semuanya!' : stars ? 'Hampir sempurna' : 'Akurasinya belum cukup', subtitle:`Level ${L}: ${LEVELS[L-1].title}`,
+    metrics:[[`${acc}%`, 'akurasi'], [`${right} / ${preds.length}`, 'tebakan benar'], [`k = ${k}`, 'tetangga']],
+    detail: confusion(preds), what,
+    ai: L === 2 ? 'Memilih nilai k adalah contoh mengatur <b>hiperparameter</b>. Ilmuwan data selalu menguji model pada data yang belum pernah dilihatnya untuk memilih pengaturan terbaik.'
+      : L === 3 ? 'Kualitas data menentukan kualitas AI. Di dunia nyata, memeriksa dan membersihkan data yang salah label bisa memakan waktu lebih lama daripada melatih modelnya.'
+      : 'Sebelum melatih AI, ilmuwan data biasanya menyamakan skala setiap ciri dan memilih ciri yang benar-benar berguna. Tanpa itu, AI bisa “tertipu” oleh angka besar.',
+    ct: L === 4 ? ['Abstraksi','Evaluasi'] : ['Pengenalan pola','Evaluasi','Debugging'],
+    next: stars && L < 4 ? () => start(L+1) : null });
+}
+start(1);
+</script>
+</body>
+</html>

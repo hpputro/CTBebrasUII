@@ -3,16 +3,116 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SMP · CT Bebras UII</title>
+<title>Ekspedisi Bina · Computational Thinking dan AI untuk SMP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../sd/common.css">
+<link rel="stylesheet" href="common.css">
+<style>
+  #home{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto;background:linear-gradient(180deg,#DCE7F5 0%,#E9F0F7 45%,#E4EEE6 100%)}
+  .hero{display:flex;align-items:center;gap:22px;padding:22px 40px 0}
+  .hero .bina{width:88px;height:88px}
+  .hero h1{font-size:2.4em;line-height:1;color:var(--navy);font-weight:800}
+  .hero p{color:var(--muted);font-size:1.02em;margin-top:6px}
+  .hero .spacer{flex:1}
+  .hero .tools{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+  .map{position:relative;margin:0 40px;min-height:0}
+  .map svg.terrain{position:absolute;inset:0;width:100%;height:100%}
+  .stage-lbl{position:absolute;transform:translateX(-50%);font-weight:800;color:var(--navy);background:rgba(255,255,255,.75);border-radius:999px;padding:2px 14px;font-size:.82em;white-space:nowrap}
+  .camp{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;color:var(--ink);text-align:left}
+  .camp .disc{flex:0 0 auto;width:clamp(64px,6.6vw,92px);height:clamp(64px,6.6vw,92px);border-radius:50%;display:grid;place-items:center;font-size:clamp(30px,3.2vw,44px);border:5px solid #fff;box-shadow:0 6px 0 rgba(30,46,92,.18);position:relative;transition:transform .15s}
+  .camp:hover .disc,.camp:focus-visible .disc{transform:scale(1.07)}
+  .camp .num{position:absolute;top:-8px;left:-8px;background:var(--navy);color:#fff;border-radius:999px;font-weight:800;font-size:.55em;padding:1px 9px;line-height:1.5}
+  .camp .card{background:#fff;border-radius:16px;padding:8px 14px;box-shadow:0 4px 0 rgba(30,46,92,.1);width:clamp(170px,15vw,230px)}
+  .camp .card b{display:block;color:var(--navy);font-size:1em;line-height:1.1}
+  .camp .card span{color:var(--muted);font-size:.78em;display:block;line-height:1.2}
+  .camp .card .st{color:var(--gold-d);font-weight:800;margin-top:2px}
+  .foot{display:flex;justify-content:space-between;align-items:center;padding:8px 40px 16px;color:var(--muted);font-size:.85em;gap:16px;flex-wrap:wrap}
+  .foot label{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700;color:var(--navy)}
+  .foot input{width:24px;height:24px;accent-color:var(--navy)}
+  #stage{position:fixed;inset:0;width:100%;height:100%;border:0;background:var(--sky);display:none}
+  #stage.show{display:block}
+  @media (max-width:900px){
+    .map svg.terrain,.stage-lbl{display:none}
+    .map{display:grid;grid-template-columns:1fr;gap:12px;overflow:auto;padding:10px 0;margin:0 16px}
+    .camp{position:relative;transform:none;left:auto!important;top:auto!important}
+    .hero{flex-wrap:wrap;padding:16px}.hero h1{font-size:1.8em}.foot{padding:8px 16px}
+  }
+</style>
 </head>
-<body style="display:grid;place-items:center;text-align:center;padding:24px">
-<div class="panel" style="max-width:520px">
-  <h2 style="color:var(--navy);font-size:1.6em">Jenjang SMP</h2>
-  <p style="color:var(--muted);margin:8px 0 18px">Permainan untuk jenjang SMP sedang disiapkan.</p>
-  <a class="btn btn-main" href="../" style="text-decoration:none">← Kembali</a>
+<body>
+<div id="home">
+  <header class="hero">
+    <div id="binaHero"></div>
+    <div><h1>Ekspedisi Bina</h1><p>Enam misi untuk memahami bagaimana AI belajar, berpikir, menulis, dan memengaruhi kita</p></div>
+    <div class="spacer"></div>
+    <div class="tools">
+      <button class="btn btn-soft" id="openGuide"><span class="icon">📘</span> Panduan guru</button>
+      <button class="btn btn-main" id="full"><span class="icon">⛶</span> Layar penuh</button>
+    </div>
+  </header>
+  <main class="map" id="map" aria-label="Peta ekspedisi">
+    <svg class="terrain" viewBox="0 0 1000 500" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 500 L0 400 L180 300 L300 360 L470 210 L600 300 L790 90 L1000 260 L1000 500 Z" fill="#CFDDEB"/>
+      <path d="M0 500 L0 450 L220 380 L380 430 L560 330 L720 400 L880 300 L1000 360 L1000 500 Z" fill="#D7E6DA"/>
+      <path d="M760 130 L790 90 L820 125 L805 120 L790 132 L775 122 Z" fill="#fff"/>
+      <path d="M90 440 C 200 420, 230 380, 330 360 S 480 330, 520 280 S 640 250, 700 200 S 820 140, 900 110" fill="none" stroke="#A97B4F" stroke-width="7" stroke-dasharray="14 12" stroke-linecap="round"/>
+    </svg>
+  </main>
+  <footer class="foot">
+    <label><input type="checkbox" id="unlock"> Mode guru: buka semua level</label>
+    <span id="total"></span>
+    <button class="btn btn-soft" id="reset">Hapus kemajuan</button>
+  </footer>
 </div>
+<iframe id="stage" title="Permainan" allow="fullscreen"></iframe>
+<script>
+const GAMES = [
+  { id:'g1', file:'knn.html', icon:'🐞', name:'Lab Tetangga Terdekat', idea:'Bagaimana AI belajar dari data', color:'#E07A5F', x:12, y:82 },
+  { id:'g2', file:'neuron.html', icon:'🧠', name:'Neuron Kecil', idea:'Bagaimana AI “berpikir”', color:'#7C6BD6', x:30, y:66 },
+  { id:'g3', file:'kata.html', icon:'✍️', name:'Mesin Kata Berikutnya', idea:'Bagaimana AI menulis', color:'#2F8F9D', x:47, y:50 },
+  { id:'g4', file:'sift.html', icon:'🕵️', name:'Detektif SIFT', idea:'Memeriksa informasi di era AI', color:'#C2554E', x:62, y:36 },
+  { id:'g5', file:'beranda.html', icon:'📲', name:'Algoritma Beranda', idea:'Rekomendasi dan gelembung informasi', color:'#D9822B', x:76, y:20 },
+  { id:'g6', file:'agen.html', icon:'🧭', name:'Agen Penjelajah', idea:'Tantangan: AI belajar dari hadiah', color:'#3E8E5A', x:88, y:62 },
+];
+const STAGES = [['Tahap 1 · Cara kerja AI', 22, 94], ['Tahap 2 · Literasi dan etika', 66, 6], ['Tahap 3 · Tantangan', 88, 82]];
+const KEY = 'ekspedisi-bina-v1';
+let state = { progress:{}, unlockAll:false };
+try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s) state = Object.assign(state, s); } catch(e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {} };
+document.getElementById('binaHero').innerHTML = `<svg class="bina" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="44" r="30" fill="#A8692F"/><circle cx="18" cy="20" r="8" fill="#A8692F"/><circle cx="62" cy="20" r="8" fill="#A8692F"/><circle cx="18" cy="20" r="4" fill="#7A4A1E"/><circle cx="62" cy="20" r="4" fill="#7A4A1E"/><ellipse cx="40" cy="54" rx="17" ry="13" fill="#E8C49A"/><circle cx="29" cy="38" r="5" fill="#fff"/><circle cx="51" cy="38" r="5" fill="#fff"/><circle cx="30" cy="39" r="2.6" fill="#1E2E5C"/><circle cx="52" cy="39" r="2.6" fill="#1E2E5C"/><ellipse cx="40" cy="48" rx="6" ry="4.5" fill="#3B2410"/><rect x="35" y="55" width="4.5" height="7" rx="1" fill="#fff"/><rect x="40.5" y="55" width="4.5" height="7" rx="1" fill="#fff"/><path d="M14 22 Q40 0 66 22 L60 26 Q40 10 20 26 Z" fill="#3E8E5A"/></svg>`;
+const map = document.getElementById('map');
+function draw(){
+  map.querySelectorAll('.camp,.stage-lbl').forEach(e => e.remove());
+  STAGES.forEach(([t, x, y]) => { const s = document.createElement('div'); s.className = 'stage-lbl'; s.style.left = x + '%'; s.style.top = y + '%'; s.textContent = t; map.appendChild(s); });
+  let total = 0;
+  GAMES.forEach((g, i) => {
+    const p = state.progress[g.id] || {}, s = [1,2,3,4].reduce((a, l) => a + (p[l] || 0), 0); total += s;
+    const b = document.createElement('button'); b.className = 'camp'; b.style.left = g.x + '%'; b.style.top = g.y + '%';
+    if (g.x > 80) b.style.flexDirection = 'row-reverse';
+    b.setAttribute('aria-label', `Misi ${i+1}: ${g.name}. ${g.idea}. ${s} dari 12 bintang`);
+    b.innerHTML = `<span class="disc" style="background:${g.color}"><span class="num">${i+1}</span>${g.icon}</span><span class="card"><b>${g.name}</b><span>${g.idea}</span><span class="st">★ ${s} / 12</span></span>`;
+    b.onclick = () => open(g.file); map.appendChild(b);
+  });
+  document.getElementById('total').textContent = `Total bintang: ${total} dari 72`;
+  document.getElementById('unlock').checked = state.unlockAll;
+}
+draw();
+const stage = document.getElementById('stage');
+function open(f){ stage.src = f; stage.classList.add('show'); document.getElementById('home').style.visibility = 'hidden'; }
+function goHome(){ stage.classList.remove('show'); stage.src = 'about:blank'; document.getElementById('home').style.visibility = 'visible'; draw(); }
+function sendState(){ stage.contentWindow && stage.contentWindow.postMessage({ bina:'state', progress:state.progress, unlockAll:state.unlockAll }, '*'); }
+function toggleFull(){ if (!document.fullscreenElement) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); else document.exitFullscreen && document.exitFullscreen(); }
+window.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.bina === 'ready') sendState();
+  if (d.bina === 'save') { const g = state.progress[d.game] = state.progress[d.game] || {}; if (d.stars > (g[d.level] || 0)) g[d.level] = d.stars; save(); sendState(); }
+  if (d.bina === 'home') goHome();
+  if (d.bina === 'fullscreen') toggleFull();
+});
+document.getElementById('full').onclick = toggleFull;
+document.getElementById('openGuide').onclick = () => open('guru.html');
+document.getElementById('unlock').onchange = e => { state.unlockAll = e.target.checked; save(); };
+document.getElementById('reset').onclick = () => { if (confirm('Hapus semua bintang dan kemajuan Ekspedisi Bina di perangkat ini?')) { state.progress = {}; save(); draw(); } };
+</script>
 </body>
 </html>

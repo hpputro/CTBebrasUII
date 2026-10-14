@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panduan Guru · Ekspedisi Bina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+  .main{max-width:1180px;margin:0 auto;width:100%}
+  .intro{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}
+  .game{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start}
+  .game .disc{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;font-size:48px}
+  .game h2{color:var(--navy);font-size:1.4em;line-height:1.1}
+  .meta{color:var(--muted);margin:2px 0 10px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px}
+  .cols h3{font-size:1em;color:var(--navy);margin-bottom:4px}
+  table.lv{width:100%;border-collapse:collapse;font-size:.88em;margin-top:6px}
+  table.lv th,table.lv td{padding:6px 8px;border-bottom:2px solid var(--sky);text-align:left;vertical-align:top}
+  table.lv th{color:var(--muted)}
+  ul{margin:4px 0 0;padding-left:1.1em}
+  li{margin:3px 0}
+  .note{background:#FFF4D9;border-radius:var(--r-md);padding:12px 16px}
+  @media (max-width:900px){.intro,.cols{grid-template-columns:1fr}.game{grid-template-columns:1fr}}
+</style>
+</head>
+<body style="overflow:auto">
+<div class="app" style="height:auto;min-height:100vh">
+  <div class="topbar">
+    <button class="btn btn-ghost" onclick="Bina.home()"><span class="icon">🗺️</span> Peta</button>
+    <div class="title"><span class="badge" style="background:var(--gold)">📘</span>Panduan Guru</div>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost" onclick="Bina.fullscreen()" aria-label="Layar penuh"><span class="icon">⛶</span></button>
+  </div>
+  <div class="main">
+    <section class="intro">
+      <div class="panel"><h3>Tentang Ekspedisi Bina</h3>
+        <p>Ekspedisi Bina adalah lanjutan Petualangan Bina untuk SMP. Enam misi disusun dalam tiga tahap: <b>cara kerja AI</b> (belajar dari data, berpikir dengan neuron, menulis dengan peluang), <b>literasi dan etika</b> (memeriksa informasi, memahami algoritma rekomendasi), dan <b>tantangan</b> (pembelajaran penguatan).</p>
+        <p style="margin-top:8px">Setiap misi punya empat level. Layar hasil menampilkan bintang, angka capaian, penjelasan “Apa yang terjadi?”, kaitan dengan AI, dan pilar computational thinking yang dilatih. Semua “AI” di dalam game ditulis sederhana dan transparan supaya perilakunya bisa dijelaskan.</p></div>
+      <div class="panel"><h3>Saran pemakaian</h3><ul>
+        <li>Urutan yang disarankan: misi 1 → 2 → 3, lalu 4 dan 5. Misi 6 untuk pengayaan.</li>
+        <li>Pakai “Mode guru” di peta untuk membuka level tertentu saat demonstrasi.</li>
+        <li>Berkas berjalan tanpa internet. Kemajuan tersimpan di peramban perangkat ini saja; tidak ada akun dan tidak ada data siswa yang dikirim.</li>
+        <li>Semua orang, akun, tempat, dan data dalam game bersifat fiktif.</li></ul></div>
+    </section>
+<section class="panel game"><div class="disc" style="background:#E07A5F">🐞</div><div><h2>1. Lab Tetangga Terdekat</h2><p class="meta">Konsep AI: klasifikasi k-tetangga terdekat, data latih, overfitting, normalisasi · Matematika: koordinat Kartesius dan jarak</p>
+<table class="lv"><tr><th>Level</th><th>Tantangan</th><th>Yang dipelajari</th></tr><tr><td>1</td><td>Menebak seperti mesin dengan k = 3</td><td>Cara mesin mengukur jarak dan memakai suara terbanyak</td></tr><tr><td>2</td><td>Memilih nilai k pada data yang mengandung gangguan</td><td>k terlalu kecil mudah terkecoh (overfitting), terlalu besar terlalu kasar</td></tr><tr><td>3</td><td>Membalik label data yang salah (k = 1)</td><td>Kualitas data latih menentukan kualitas tebakan</td></tr><tr><td>4</td><td>Panjang tubuh (mm) vs berat (mg)</td><td>Menyamakan skala (normalisasi) atau membuang ciri yang tidak berguna</td></tr></table>
+<div class="cols"><div><h3>Cara membaca hasil</h3><ul><li><b>Akurasi</b>: persentase serangga uji yang ditebak benar.</li><li><b>Tabel benar/salah</b>: baris = kelompok sebenarnya, kolom = tebakan mesin. Angka merah adalah kesalahan.</li><li>Garis putus-putus menunjukkan tetangga yang dipakai mesin untuk tebakan yang salah.</li><li>Bintang level 2 dan 4: 100% = 3, ≥ 90% = 2 (level 4: ≥ 80% = 1).</li></ul></div><div><h3>Pertanyaan diskusi</h3><ul><li>Mengapa k = 1 mudah tertipu oleh satu data yang salah?</li><li>Apa contoh di kehidupan nyata ketika satuan yang berbeda bisa menyesatkan?</li><li>Siapa yang bertanggung jawab bila data latih salah label?</li></ul></div></div></div></section>
+<section class="panel game"><div class="disc" style="background:#7C6BD6">🧠</div><div><h2>2. Neuron Kecil</h2><p class="meta">Konsep AI: perseptron, bobot, ambang, belajar dari kesalahan, jaringan berlapis · Matematika: operasi hitung dan pertidaksamaan</p>
+<table class="lv"><tr><th>Level</th><th>Tantangan</th><th>Yang dipelajari</th></tr><tr><td>1</td><td>Neuron “dan” (kantin)</td><td>Ambang tinggi: semua masukan harus menyala</td></tr><tr><td>2</td><td>Neuron “atau” (payung)</td><td>Menurunkan ambang mengubah perilaku neuron</td></tr><tr><td>3</td><td>Tiga masukan berbobot (main bola) dan Belajar otomatis</td><td>Bobot negatif sebagai “veto”; belajar = menggeser bobot saat salah</td></tr><tr><td>4</td><td>Saklar tangga (XOR)</td><td>Satu neuron tidak cukup; dua lapis neuron menyelesaikannya</td></tr></table>
+<div class="cols"><div><h3>Cara membaca hasil</h3><ul><li><b>Baris cocok</b>: berapa baris tabel keinginan yang dijawab benar oleh neuron.</li><li>Ketuk satu baris untuk melihat perhitungannya di gambar neuron.</li><li>Grafik kesalahan memperlihatkan jumlah baris salah di setiap putaran belajar otomatis.</li><li>Bintang: semua baris cocok = 3 (level 1–2 memakai belajar otomatis = 2).</li></ul></div><div><h3>Pertanyaan diskusi</h3><ul><li>Apa arti bobot negatif dalam keputusan sehari-hari?</li><li>Mengapa belajar otomatis gagal pada saklar tangga?</li><li>Bagaimana dua neuron sederhana bisa menyelesaikan masalah yang sulit bagi satu neuron?</li></ul></div></div></div></section>
+<section class="panel game"><div class="disc" style="background:#2F8F9D">✍️</div><div><h2>3. Mesin Kata Berikutnya</h2><p class="meta">Konsep AI: model bahasa, prediksi kata berikutnya, peluang, halusinasi, temperature · Matematika: peluang; Bahasa Indonesia</p>
+<table class="lv"><tr><th>Level</th><th>Tantangan</th><th>Yang dipelajari</th></tr><tr><td>1</td><td>Menebak kata berikutnya yang paling mungkin</td><td>Mesin menghitung pasangan kata, bukan memahami arti</td></tr><tr><td>2</td><td>Menghitung peluang kata berikutnya</td><td>Peluang = banyak pasangan ÷ banyak kata pertama</td></tr><tr><td>3</td><td>Menambah cerita lalu memeriksa kalimat buatan mesin</td><td>Kalimat lancar bisa berupa gabungan baru yang keliru (halusinasi)</td></tr><tr><td>4</td><td>Mencoba tiga tingkat kreativitas</td><td>Menimbang kalimat aman tetapi monoton dengan kreatif tetapi aneh</td></tr></table>
+<div class="cols"><div><h3>Cara membaca hasil</h3><ul><li>Level 1–2: jumlah jawaban tepat dan tabel catatan mesin (berapa kali tiap kata muncul).</li><li>Level 3: berapa kalimat buatan mesin yang ternyata kalimat baru, dan apakah siswa memeriksanya dengan tepat.</li><li>Level 4: penilaian siswa sendiri (masuk akal atau aneh) untuk tiap pengaturan, untuk didiskusikan bersama.</li></ul></div><div><h3>Pertanyaan diskusi</h3><ul><li>Mengapa “ibu membeli ikan di sungai” bisa muncul padahal tidak ada di cerita?</li><li>Kapan kita butuh AI yang kreatif, dan kapan butuh AI yang hati-hati?</li><li>Apa bedanya mesin ini dengan chatbot AI sungguhan?</li></ul></div></div></div></section>
+<section class="panel game"><div class="disc" style="background:#C2554E">🕵️</div><div><h2>4. Detektif SIFT</h2><p class="meta">Konsep AI: halusinasi, kutipan palsu, konten buatan AI · Bahasa Indonesia (teks berita); pelajaran How to SIFT with AI (Common Sense)</p>
+<table class="lv"><tr><th>Level</th><th>Tantangan</th><th>Yang dipelajari</th></tr><tr><td>1</td><td>Kabar libur mendadak dari akun baru</td><td>Menahan diri dan memeriksa sumber resmi</td></tr><tr><td>2</td><td>Angka survei yang diubah</td><td>Menelusuri angka sampai ke laporan asli</td></tr><tr><td>3</td><td>Klaim yang ingin kita percaya</td><td>Mencari bukti tandingan; melawan bias konfirmasi</td></tr><tr><td>4</td><td>Artikel buatan AI dan Asisten AI yang mengarang kutipan</td><td>AI membantu mencari, tetapi hasilnya tetap harus diperiksa</td></tr></table>
+<div class="cols"><div><h3>Cara membaca hasil</h3><ul><li><b>Keputusan</b>: Benar, Menyesatkan, atau Salah.</li><li><b>Langkah SIFT dipakai</b>: dari empat langkah, berapa yang digunakan siswa.</li><li>Bintang: keputusan tepat dengan ≥ 3 langkah = 3; level 3 dan 4 maksimal 2 bintang bila langkah kunci (cari liputan lain / telusuri klaim) dilewati.</li></ul></div><div><h3>Pertanyaan diskusi</h3><ul><li>Mengapa kabar yang menyenangkan justru perlu diperiksa lebih teliti?</li><li>Bagaimana cara memakai chatbot AI dengan aman untuk mencari informasi?</li><li>Semua tempat dan akun di game ini fiktif. Contoh nyata apa yang pernah kalian temui?</li></ul></div></div></div></section>
+<section class="panel game"><div class="disc" style="background:#D9822B">📲</div><div><h2>5. Algoritma Beranda</h2><p class="meta">Konsep AI: sistem rekomendasi, fungsi tujuan, lingkaran umpan balik, gelembung informasi, keadilan · IPS, PPKn, kesejahteraan digital</p>
+<table class="lv"><tr><th>Level</th><th>Tantangan</th><th>Yang dipelajari</th></tr><tr><td>1</td><td>Mengejar waktu tonton saja</td><td>Gelembung informasi terbentuk dari lingkaran umpan balik</td></tr><tr><td>2</td><td>Menambah dorongan hal baru</td><td>Menyeimbangkan waktu tonton dan keragaman</td></tr><tr><td>3</td><td>Mengurangi konten heboh</td><td>Memasukkan kesejahteraan ke dalam tujuan algoritma</td></tr><tr><td>4</td><td>Satu aturan untuk tiga pengguna</td><td>Aturan yang adil bagi pengguna yang berbeda</td></tr></table>
+<div class="cols"><div><h3>Cara membaca hasil</h3><ul><li><b>Waktu tonton</b>: rata-rata menit per hari selama 30 hari simulasi.</li><li><b>Keragaman</b>: seberapa merata lima jenis video di beranda (rata-rata 10 hari terakhir); 100% = sangat merata.</li><li><b>Kesejahteraan</b>: indeks 0–100 yang turun bila beranda didominasi konten heboh dan tidak beragam.</li><li>Simulasi ini model sederhana untuk belajar, bukan data aplikasi sungguhan.</li></ul></div><div><h3>Pertanyaan diskusi</h3><ul><li>Siapa yang menentukan tujuan algoritma di aplikasi yang kalian pakai?</li><li>Apakah waktu tonton yang tinggi selalu baik bagi penonton?</li><li>Bagaimana cara keluar dari gelembung informasi?</li></ul></div></div></div></section>
+<section class="panel game"><div class="disc" style="background:#3E8E5A">🧭</div><div><h2>6. Agen Penjelajah</h2><p class="meta">Konsep AI: pembelajaran penguatan, hadiah dan hukuman, akal-akalan hadiah, eksplorasi · Informatika; tantangan bagi siswa yang lebih cepat</p>
+<table class="lv"><tr><th>Level</th><th>Tantangan</th><th>Yang dipelajari</th></tr><tr><td>1</td><td>Mengamati agen belajar</td><td>Belajar lewat banyak percobaan dan hadiah</td></tr><tr><td>2</td><td>Merancang hadiah dan hukuman</td><td>Hadiah yang keliru menghasilkan perilaku keliru (agen sengaja masuk sungai)</td></tr><tr><td>3</td><td>Koin yang bisa diambil berulang</td><td>Akal-akalan hadiah (reward hacking)</td></tr><tr><td>4</td><td>Pintu kecil dekat vs harta jauh</td><td>Eksplorasi vs eksploitasi; rasa ingin tahu</td></tr></table>
+<div class="cols"><div><h3>Cara membaca hasil</h3><ul><li><b>Langkah agen</b> vs <b>jalan terpendek</b>: seberapa efisien rute yang dipelajari.</li><li>Grafik: total hadiah per percobaan (rata-rata 10 percobaan). Naik berarti agen makin pintar.</li><li>Warna oranye di peta = kotak yang paling sering dikunjungi; panah kecil = langkah pilihan agen.</li><li>Bintang: sampai tujuan dengan jalan terpendek = 3, lebih sampai dua langkah = 2.</li></ul></div><div><h3>Pertanyaan diskusi</h3><ul><li>Mengapa agen sengaja masuk sungai di level 2?</li><li>Apa contoh akal-akalan hadiah pada manusia, misalnya saat mengejar nilai?</li><li>Kapan kita perlu mencoba hal baru, dan kapan cukup memakai yang sudah diketahui?</li></ul></div></div></div></section>
+<section class="note"><b>Benang merah untuk siswa:</b> AI belajar dari data (misi 1), menghitung dengan bobot (misi 2), dan menebak dengan peluang (misi 3). Karena itu AI bisa keliru, bisa diakali, dan bisa memengaruhi kita (misi 4–6). Manusialah yang merancang tujuannya, memeriksa hasilnya, dan memutuskan.</section>
+  </div>
+</div>
+<script src="common.js"></script>
+</body>
+</html>
